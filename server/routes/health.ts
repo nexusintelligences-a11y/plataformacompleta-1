@@ -1,0 +1,284 @@
+/**
+ * Health and Quotas Monitoring Endpoint
+ * Real-time visibility into FREE tier usage
+ * 
+ * CONFIGURATION MODE:
+ * Returns config_pending status when no database is connected,
+ * allowing the app to show a preview while waiting for Supabase configuration.
+ */
+
+import express from 'express';
+import { cache } from '../lib/cache';
+import { getUsageStats } from '../lib/limitMonitor';
+import { db, isDatabaseConnected } from '../db';
+import { sentryConfig, betterStackConfig, redisConfig, appSettings } from '../../shared/db-schema';
+import { isSupabaseConfigured, getEffectiveSupabaseConfig } from '../lib/supabaseFileConfig';
+
+const router = express.Router();
+
+/**
+ * GET /api/health
+ * Basic health check - system-wide status without tenant-specific data
+ * Returns config_pending when database is not connected
+ */
+router.get('/', async (req, res) => {
+  try {
+    const dbConnected = isDatabaseConnected();
+    const supabaseConfigured = isSupabaseConfigured();
+    const effectiveConfig = getEffectiveSupabaseConfig();
+    
+    if (!dbConnected) {
+      const health = {
+        status: 'config_pending',
+        message: 'Aguardando configuração do Supabase. Acesse /configuracoes para configurar.',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: {
+          used: process.memoryUsage().heapUsed / 1024 / 1024,
+          total: process.memoryUsage().heapTotal / 1024 / 1024,
+          percentage: (process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100,
+        },
+        configuration: {
+          database: 'not_configured',
+          supabase: supabaseConfigured ? 'configured' : 'not_configured',
+          supabaseUrl: effectiveConfig?.url ? maskUrl(effectiveConfig.url) : null,
+        },
+        nextSteps: [
+          '1. Acesse /configuracoes',
+          '2. Configure as credenciais do Supabase',
+          '3. Reinicie o servidor para conectar ao banco de dados',
+        ],
+      };
+      
+      return res.json(health);
+    }
+    
+    let sentryCount: any[] = [];
+    let betterStackCount: any[] = [];
+    let redisCount: any[] = [];
+    let settingsCount: any[] = [];
+    
+    try {
+      sentryCount = await db!.select().from(sentryConfig);
+      betterStackCount = await db!.select().from(betterStackConfig);
+      redisCount = await db!.select().from(redisConfig);
+      settingsCount = await db!.select().from(appSettings);
+    } catch (dbError) {
+      const errorMessage = (dbError as Error).message;
+      const errorCause = (dbError as any)?.cause?.message || '';
+      if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('connection') || 
+          errorMessage.includes('Failed query') || errorCause.includes('ENOTFOUND')) {
+        return res.json({
+          status: 'database_error',
+          message: 'DATABASE_URL inválida. Corrija a Connection String do Supabase.',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          memory: {
+            used: process.memoryUsage().heapUsed / 1024 / 1024,
+            total: process.memoryUsage().heapTotal / 1024 / 1024,
+            percentage: (process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100,
+          },
+          configuration: {
+            database: 'error',
+            supabase_js: supabaseConfigured ? 'configured' : 'not_configured',
+            supabaseUrl: effectiveConfig?.url ? maskUrl(effectiveConfig.url) : null,
+          },
+          error: 'DATABASE_URL hostname inválido. Use o formato: postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres',
+          nextSteps: [
+            '1. No Supabase Dashboard, vá em Settings → Database',
+            '2. Copie a "Connection String" (URI)',
+            '3. Atualize DATABASE_URL no Replit Secrets',
+            '4. Reinicie o servidor',
+          ],
+        });
+      }
+      throw dbError;
+    }
+    
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: {
+        used: process.memoryUsage().heapUsed / 1024 / 1024,
+        total: process.memoryUsage().heapTotal / 1024 / 1024,
+        percentage: (process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100,
+      },
+      integrations: {
+        sentry: {
+          configured: sentryCount.length > 0,
+          status: sentryCount.length > 0 ? 'active' : 'not_configured',
+        },
+        betterStack: {
+          configured: betterStackCount.length > 0,
+          status: betterStackCount.length > 0 ? 'active' : 'not_configured',
+        },
+        redis: {
+          configured: redisCount.length > 0,
+          status: redisCount.length > 0 ? 'active' : 'not_configured',
+        },
+        supabase: {
+          configured: settingsCount.length > 0 && settingsCount.some(s => s.supabaseUrl && s.supabaseAnonKey),
+          status: settingsCount.some(s => s.supabaseUrl && s.supabaseAnonKey) ? 'active' : 'not_configured',
+        },
+      },
+    };
+    
+    res.json(health);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * GET /api/health/quotas
+ * Detailed quota usage for all services
+ */
+router.get('/quotas', async (req, res) => {
+  try {
+    if (!isDatabaseConnected()) {
+      return res.json({
+        status: 'config_pending',
+        message: 'Database not configured. Configure Supabase via /configuracoes',
+        services: {},
+      });
+    }
+    
+    const usage = await getUsageStats();
+    const cacheStats = await cache.getStats();
+    
+    const quotas = {
+      timestamp: new Date().toISOString(),
+      services: {
+        redis: {
+          name: 'Upstash Redis FREE',
+          limit: usage.redis.monthlyLimit,
+          used: usage.redis.commandsThisMonth,
+          percentage: usage.redis.percentage,
+          status: getStatus(usage.redis.percentage),
+          period: 'monthly',
+          month: usage.redis.month,
+          commandsToday: usage.redis.commandsToday,
+        },
+        supabase: {
+          name: 'Supabase FREE',
+          limit: usage.supabase.limit,
+          used: usage.supabase.bandwidthUsed,
+          percentage: usage.supabase.percentage,
+          status: getStatus(usage.supabase.percentage),
+          limitFormatted: formatBytes(usage.supabase.limit),
+          usedFormatted: formatBytes(usage.supabase.bandwidthUsed),
+        },
+        cache: {
+          redisConnected: cacheStats.redisConnected,
+          memoryKeys: cacheStats.memoryKeys,
+          memoryStats: cacheStats.memoryStats,
+        },
+      },
+      recommendations: getRecommendations(usage),
+    };
+    
+    res.json(quotas);
+  } catch (error) {
+    console.error('Error fetching quotas:', error);
+    res.status(500).json({ error: 'Failed to fetch quotas' });
+  }
+});
+
+/**
+ * GET /api/health/metrics
+ * Prometheus-style metrics
+ */
+router.get('/metrics', async (req, res) => {
+  if (!isDatabaseConnected()) {
+    res.setHeader('Content-Type', 'text/plain');
+    return res.send('# Database not configured - no metrics available');
+  }
+  
+  const usage = await getUsageStats();
+  const cacheStats = await cache.getStats();
+  
+  const metrics = `
+# HELP redis_commands_monthly Redis commands used this month
+# TYPE redis_commands_monthly gauge
+redis_commands_monthly{tier="free"} ${usage.redis.commandsThisMonth}
+
+# HELP redis_commands_today Redis commands used today
+# TYPE redis_commands_today gauge
+redis_commands_today{tier="free"} ${usage.redis.commandsToday}
+
+# HELP redis_monthly_limit Redis monthly command limit
+# TYPE redis_monthly_limit gauge
+redis_monthly_limit{tier="free"} ${usage.redis.monthlyLimit}
+
+# HELP supabase_bandwidth_bytes Supabase bandwidth used this month
+# TYPE supabase_bandwidth_bytes gauge
+supabase_bandwidth_bytes{tier="free"} ${usage.supabase.bandwidthUsed}
+
+# HELP supabase_bandwidth_limit_bytes Supabase monthly bandwidth limit
+# TYPE supabase_bandwidth_limit_bytes gauge
+supabase_bandwidth_limit_bytes{tier="free"} ${usage.supabase.limit}
+
+# HELP cache_memory_keys Number of keys in memory cache
+# TYPE cache_memory_keys gauge
+cache_memory_keys ${cacheStats.memoryKeys}
+
+# HELP cache_redis_connected Redis connection status
+# TYPE cache_redis_connected gauge
+cache_redis_connected ${cacheStats.redisConnected ? 1 : 0}
+`.trim();
+  
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(metrics);
+});
+
+function maskUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host.substring(0, 8)}...`;
+  } catch {
+    return url.substring(0, 20) + '...';
+  }
+}
+
+function getStatus(percentage: number): string {
+  if (percentage >= 95) return 'critical';
+  if (percentage >= 80) return 'warning';
+  return 'ok';
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getRecommendations(usage: any): string[] {
+  const recommendations: string[] = [];
+  
+  if (usage.redis.percentage > 90) {
+    recommendations.push('🔴 CRITICAL: Redis usage > 90%. Consider upgrading to paid plan or optimizing cache usage.');
+  } else if (usage.redis.percentage > 80) {
+    recommendations.push('🟡 WARNING: Redis usage > 80%. Increase cache TTL or reduce command frequency.');
+  }
+  
+  if (usage.supabase.percentage > 90) {
+    recommendations.push('🔴 CRITICAL: Supabase bandwidth > 90%. Enable Cloudflare cache and reduce API calls.');
+  } else if (usage.supabase.percentage > 80) {
+    recommendations.push('🟡 WARNING: Supabase bandwidth > 80%. Implement request batching and caching.');
+  }
+  
+  if (recommendations.length === 0) {
+    recommendations.push('✅ All services within acceptable limits.');
+  }
+  
+  return recommendations;
+}
+
+export default router;

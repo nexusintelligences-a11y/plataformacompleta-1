@@ -1,0 +1,20 @@
+import { usePlatform } from './shared/hooks/usePlatform';
+// Direct imports instead of lazy loading to avoid Vite HMR + Suspense bugs
+import DesktopApp from './desktop/DesktopApp';
+import MobileApp from './mobile/MobileApp';
+
+/**
+ * PlatformRouter - Roteador inteligente que decide qual app renderizar
+ * Baseado na detecção da plataforma (mobile vs desktop)
+ * 
+ * NOTA: Usando imports diretos ao invés de lazy() devido a bug do Vite HMR + Suspense
+ * que causa o loading screen ficar preso. Em produção, o Vite faz code splitting automaticamente.
+ */
+const PlatformRouter = () => {
+  const { isMobile } = usePlatform();
+
+  // Renderiza o app apropriado baseado na plataforma
+  return isMobile ? <MobileApp /> : <DesktopApp />;
+};
+
+export default PlatformRouter;

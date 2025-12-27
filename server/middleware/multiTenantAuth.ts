@@ -1,0 +1,118 @@
+import { Request, Response, NextFunction } from 'express';
+
+// Extender os tipos do Express Session
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+    userEmail?: string;
+    userName?: string;
+    tenantId?: string;  // Tenant ID para isolamento completo de credenciais
+    supabaseUrl?: string;
+    supabaseKey?: string;
+  }
+}
+
+// Middleware para verificar se usuário está autenticado
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // Em desenvolvimento, permitir acesso mesmo sem sessão (criar tenant temporário)
+  if (process.env.NODE_ENV === 'development') {
+    if (!req.session || !req.session.userId) {
+      const tempTenantId = `dev-tenant-default`;
+      console.warn('⚠️ [DEV] Label Designer: Usando tenant temporário para desenvolvimento');
+      
+      // Criar sessão temporária se não existir
+      if (req.session) {
+        req.session.userId = tempTenantId;
+        req.session.tenantId = tempTenantId;
+        req.session.userEmail = 'dev@example.com';
+        req.session.userName = 'Dev User';
+      }
+    }
+    return next();
+  }
+  
+  // Em produção, exigir autenticação real
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ 
+      error: 'Não autenticado',
+      redirect: '/login'
+    });
+  }
+  next();
+}
+
+// Middleware para adicionar dados do usuário nas requisições
+export function attachUserData(req: Request, res: Response, next: NextFunction) {
+  if (req.session && req.session.userId) {
+    (req as any).user = {
+      id: req.session.userId,
+      email: req.session.userEmail,
+      nome: req.session.userName,
+      supabaseUrl: req.session.supabaseUrl,
+      supabaseKey: req.session.supabaseKey
+    };
+  }
+  next();
+}
+
+// Middleware para verificar se rota é pública (não precisa de autenticação)
+export function isPublicRoute(path: string): boolean {
+  // Permitir todas as rotas do Vite e assets
+  if (path.startsWith('/@') || 
+      path.startsWith('/node_modules') ||
+      path.startsWith('/src') ||
+      path.endsWith('.js') ||
+      path.endsWith('.ts') ||
+      path.endsWith('.tsx') ||
+      path.endsWith('.jsx') ||
+      path.endsWith('.css') ||
+      path.endsWith('.json') ||
+      path.endsWith('.png') ||
+      path.endsWith('.jpg') ||
+      path.endsWith('.svg') ||
+      path.endsWith('.ico')) {
+    return true;
+  }
+  
+  const publicRoutes = [
+    '/login',
+    '/api/auth/',
+    '/api/config/',
+    '/health',
+    '/assets'
+  ];
+  
+  return publicRoutes.some(route => path.startsWith(route));
+}
+
+// Middleware para redirecionar não autenticados
+export function redirectIfNotAuth(req: Request, res: Response, next: NextFunction) {
+  // Ignorar rotas públicas, API e assets
+  if (isPublicRoute(req.path)) {
+    return next();
+  }
+  
+  // Se não está autenticado e está tentando acessar página protegida
+  if (!req.session || !req.session.userId) {
+    // Se é API, SEMPRE retornar 401 JSON
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ 
+        error: 'Não autenticado',
+        redirect: '/login'
+      });
+    }
+    
+    // Se é página HTML, redirecionar
+    if (req.accepts('html')) {
+      return res.redirect('/login');
+    }
+    
+    // Default: 401 JSON
+    return res.status(401).json({ 
+      error: 'Não autenticado',
+      redirect: '/login'
+    });
+  }
+  
+  next();
+}

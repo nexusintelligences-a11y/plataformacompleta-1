@@ -1,0 +1,42 @@
+{
+  "isRunning": true,
+  "startedAt": "2025-12-27T02:05:38.947Z",
+  "lastExecutions": {
+    "dev-daviemericko_gmail_com-dev-daviemericko_gmail_com": {
+      "clientId": "dev-daviemericko_gmail_com",
+      "tenantId": "dev-daviemericko_gmail_com",
+      "lastRun": "2025-12-10T17:19:14.280Z",
+      "lastSuccess": "2025-12-10T17:19:14.280Z",
+      "lastError": null,
+      "consecutiveErrors": 0,
+      "totalExecutions": 127,
+      "totalNewClientsDetected": 0,
+      "totalEventsCreated": 0,
+      "status": "stopped"
+    },
+    "system-system": {
+      "clientId": "system",
+      "tenantId": "system",
+      "lastRun": "2025-12-13T21:56:49.010Z",
+      "lastSuccess": "2025-12-13T21:56:49.010Z",
+      "lastError": null,
+      "consecutiveErrors": 0,
+      "totalExecutions": 377,
+      "totalNewClientsDetected": 1,
+      "totalEventsCreated": 0,
+      "status": "stopped"
+    }
+  },
+  "globalStats": {
+    "totalExecutions": 504,
+    "totalNewClientsDetected": 1,
+    "totalEventsCreated": 0,
+    "totalErrors": 0,
+    "uptime": 896
+  },
+  "settings": {
+    "detectionIntervalMinutes": 2,
+    "processingEnabled": true,
+    "maxRetries": 3
+  }
+}
