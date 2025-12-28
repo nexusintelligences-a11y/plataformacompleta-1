@@ -67,7 +67,7 @@ export default function CalendarioPage() {
     }
   };
 
-  const calendarMeetings = meetings.map((m: Meeting) => ({
+  const calendarMeetings = meetings.map((m: any) => ({
     id: m.id,
     titulo: m.titulo,
     nome: m.nome,

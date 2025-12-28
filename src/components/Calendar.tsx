@@ -21,7 +21,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 
 interface CalendarProps {
-  meetings: Meeting[];
+  meetings: any[];
   onDateClick: (date: Date) => void;
 }
 
@@ -43,7 +43,10 @@ export function Calendar({ meetings, onDateClick }: CalendarProps) {
   const goToToday = () => setCurrentDate(new Date());
 
   const getMeetingsForDay = (day: Date) => {
-    return meetings.filter(m => isSameDay(new Date(m.data_inicio), day));
+    return meetings.filter(m => {
+      const meetingDate = new Date(m.data_inicio);
+      return isSameDay(meetingDate, day);
+    });
   };
 
   return (

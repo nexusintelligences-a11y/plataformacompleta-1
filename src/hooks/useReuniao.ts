@@ -103,6 +103,7 @@ export function useReuniao(id?: string) {
     error: listError || meetingError,
     addMeeting: (data: any) => createMutation.mutateAsync(data),
     updateMeeting: (id: string, data: any) => updateMutation.mutateAsync({ id, data }),
+    startMeeting: (id: string) => updateMutation.mutateAsync({ id, data: { status: 'em_andamento' } }),
     deleteMeeting: (id: string) => deleteMutation.mutateAsync(id),
     getToken100ms: (id: string) => getToken100msMutation.mutateAsync(id),
     checkAvailability: (data: { dataInicio: string; dataFim: string }) => checkAvailabilityMutation.mutateAsync(data),
