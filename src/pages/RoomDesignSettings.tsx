@@ -453,7 +453,15 @@ export default function RoomDesignSettings() {
   const { data: tenant, isLoading } = useQuery({
     queryKey: ["/api/reunioes/tenant-config"],
     queryFn: async () => {
-      const response = await api.get("/api/reunioes/tenant-config");
+      // 📌 Inclui headers do Supabase para o backend buscar a config
+      const supabaseUrl = localStorage.getItem('supabase_url');
+      const supabaseKey = localStorage.getItem('supabase_key');
+      
+      const headers: Record<string, string> = {};
+      if (supabaseUrl) headers["x-supabase-url"] = supabaseUrl;
+      if (supabaseKey) headers["x-supabase-key"] = supabaseKey;
+
+      const response = await api.get("/api/reunioes/tenant-config", { headers });
       return response.data.data;
     },
   });
