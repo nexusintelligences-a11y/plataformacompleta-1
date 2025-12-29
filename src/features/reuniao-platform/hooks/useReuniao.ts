@@ -102,6 +102,20 @@ export function useReuniao(id?: string) {
     mutationFn: (id: string) => apiRequest("POST", `${API_BASE}/${id}/recording/stop`),
   });
 
+  // 📌 NOVO: Busca gravações da reunião
+  const { data: recordingsResponse, isLoading: recordingsLoading } = useQuery({
+    queryKey: [API_BASE, id, 'gravacoes'],
+    queryFn: () => apiRequest("GET", `${API_BASE}/${id}/gravacoes`),
+    enabled: !!id,
+  });
+
+  // 📌 NOVO: Busca transcrições da reunião
+  const { data: transcriptionsResponse, isLoading: transcriptionsLoading } = useQuery({
+    queryKey: [API_BASE, id, 'transcricoes'],
+    queryFn: () => apiRequest("GET", `${API_BASE}/${id}/transcricoes`),
+    enabled: !!id,
+  });
+
   const createInstantMeetingMutation = useMutation({
     mutationFn: async () => {
       const now = new Date();
@@ -133,7 +147,9 @@ export function useReuniao(id?: string) {
   return {
     meetings,
     meeting,
-    loading: listLoading || meetingLoading,
+    recordings: recordingsResponse?.data || [],
+    transcriptions: transcriptionsResponse?.data || [],
+    loading: listLoading || meetingLoading || recordingsLoading || transcriptionsLoading,
     error: listError || meetingError,
     addMeeting: (data: CreateMeetingData) => createMutation.mutateAsync(data),
     updateMeeting: (id: string, data: Partial<Meeting>) => updateMutation.mutateAsync({ id, data }),

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { reunioes, meetingTenants, gravacoes, hms100msConfig } from '../../shared/db-schema';
+import { reunioes, meetingTenants, gravacoes, transcricoes, hms100msConfig } from '../../shared/db-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { decrypt } from '../lib/credentialsManager';
 import {
@@ -196,6 +196,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       nome,
       email,
       telefone,
+      roomDesignConfig,
     } = req.body;
 
     if (!dataInicio || !dataFim) {
@@ -203,6 +204,19 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'dataInicio e dataFim são obrigatórios',
       });
+    }
+
+    // 📌 Busca design do tenant se não for passado
+    let designConfig = roomDesignConfig;
+    if (!designConfig) {
+      const [tenant] = await db
+        .select()
+        .from(meetingTenants)
+        .where(eq(meetingTenants.id, tenantId));
+      
+      if (tenant?.roomDesignConfig) {
+        designConfig = tenant.roomDesignConfig;
+      }
     }
 
     const [newMeeting] = await db
@@ -219,6 +233,12 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         email,
         telefone,
         status: 'agendada',
+        // 📌 CRÍTICO: Salva design da reunião específica no metadata
+        metadata: {
+          roomDesignConfig: designConfig,
+          createdAt: new Date().toISOString(),
+          createdBy: req.user?.email || 'unknown',
+        },
       })
       .returning();
 
@@ -285,6 +305,16 @@ router.patch('/:id', async (req: AuthRequest, res: Response) => {
     }
     if (updateData.dataFim) {
       updateData.dataFim = new Date(updateData.dataFim);
+    }
+
+    // 📌 Se atualizar design, persiste no metadata
+    if (updateData.roomDesignConfig) {
+      updateData.metadata = {
+        ...(existing.metadata as any),
+        roomDesignConfig: updateData.roomDesignConfig,
+        updatedAt: new Date().toISOString(),
+      };
+      delete updateData.roomDesignConfig;
     }
 
     const [updated] = await db
@@ -580,6 +610,46 @@ router.post('/:id/recording/stop', async (req: AuthRequest, res: Response) => {
     return res.status(500).json({
       success: false,
       message: 'Erro ao parar gravação',
+    });
+  }
+});
+
+router.get('/:id/gravacoes', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+
+    const recordings = await db
+      .select()
+      .from(gravacoes)
+      .where(and(eq(gravacoes.reuniaoId, id), eq(gravacoes.tenantId, tenantId)));
+
+    return res.json({ success: true, data: recordings });
+  } catch (error) {
+    console.error('[MEETINGS] Erro ao obter gravações:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao obter gravações',
+    });
+  }
+});
+
+router.get('/:id/transcricoes', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+
+    const transcriptions = await db
+      .select()
+      .from(transcricoes)
+      .where(and(eq(transcricoes.reuniaoId, id), eq(transcricoes.tenantId, tenantId)));
+
+    return res.json({ success: true, data: transcriptions });
+  } catch (error) {
+    console.error('[MEETINGS] Erro ao obter transcrições:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao obter transcrições',
     });
   }
 });
