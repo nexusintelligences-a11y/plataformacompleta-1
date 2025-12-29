@@ -29,3 +29,4 @@
 [x] 29. ✅ REMOVIDO: Aba "Configurações" da página de Reunião
 [x] 30. ✅ IMPLEMENTADO: Suporte automático a Supabase no hook useReuniao e backend
 [x] 31. ✅ FINALIZADO: Reuniões sincronizadas automaticamente sem necessidade de aba extra
+[x] 32. ✅ DOCUMENTADO: Guia exaustivo de integração e sincronização criado
