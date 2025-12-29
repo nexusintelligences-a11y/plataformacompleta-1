@@ -210,18 +210,24 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     let designConfig = roomDesignConfig;
     try {
       if (!designConfig) {
-        const [tenant] = await db
-          .select()
-          .from(meetingTenants)
-          .where(eq(meetingTenants.id, tenantId));
+        // Use try/catch with a temporary string check to avoid UUID error if tenantId is not a UUID
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
         
-        if (tenant?.roomDesignConfig) {
-          designConfig = tenant.roomDesignConfig;
+        if (isUuid) {
+          const [tenant] = await db
+            .select()
+            .from(meetingTenants)
+            .where(eq(meetingTenants.id, tenantId));
+          
+          if (tenant?.roomDesignConfig) {
+            designConfig = tenant.roomDesignConfig;
+          }
+        } else {
+          console.warn(`[MEETINGS] tenantId "${tenantId}" is not a valid UUID, skipping tenant lookup`);
         }
       }
     } catch (dbError: any) {
-      console.warn('[MEETINGS] Falha ao buscar design do tenant (provavelmente ID não UUID), usando padrão:', dbError.message);
-      // Se o erro for de sintaxe de UUID, ignoramos e seguimos com o padrão
+      console.warn('[MEETINGS] Falha ao buscar design do tenant, usando padrão:', dbError.message);
     }
 
     const meetingData = {
