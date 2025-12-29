@@ -210,7 +210,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     let designConfig = roomDesignConfig;
     try {
       if (!designConfig) {
-        // Use try/catch with a temporary string check to avoid UUID error if tenantId is not a UUID
+        // Use regex check to avoid UUID error if tenantId is not a UUID
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
         
         if (isUuid) {
