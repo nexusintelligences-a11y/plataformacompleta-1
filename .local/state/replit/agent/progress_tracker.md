@@ -26,3 +26,6 @@
 [x] 26. Workflow reiniciado e verificado - Sistema 100% em funcionamento no Supabase
 [x] 27. drizzle-kit installed and application running successfully on port 5000
 [x] 28. Import migration completed - npm install successful, workflow running on port 5000
+[x] 29. ✅ REMOVIDO: Aba "Configurações" da página de Reunião
+[x] 30. ✅ IMPLEMENTADO: Suporte automático a Supabase no hook useReuniao e backend
+[x] 31. ✅ FINALIZADO: Reuniões sincronizadas automaticamente sem necessidade de aba extra

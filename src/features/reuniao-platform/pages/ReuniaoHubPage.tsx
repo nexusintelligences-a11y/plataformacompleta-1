@@ -44,7 +44,7 @@ export default function ReuniaoHubPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
           <TabsTrigger value="home" className="gap-2">
             <Home className="h-4 w-4" />
             <span className="hidden sm:inline">Home</span>
@@ -60,10 +60,6 @@ export default function ReuniaoHubPage() {
           <TabsTrigger value="design" className="gap-2">
             <Palette className="h-4 w-4" />
             <span className="hidden sm:inline">Design</span>
-          </TabsTrigger>
-          <TabsTrigger value="configuracoes" className="gap-2">
-            <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Config</span>
           </TabsTrigger>
         </TabsList>
 
@@ -86,12 +82,6 @@ export default function ReuniaoHubPage() {
         <TabsContent value="design" className="mt-6">
           <Suspense fallback={<LoadingFallback />}>
             <RoomDesignSettings />
-          </Suspense>
-        </TabsContent>
-
-        <TabsContent value="configuracoes" className="mt-6">
-          <Suspense fallback={<LoadingFallback />}>
-            <Configuracoes />
           </Suspense>
         </TabsContent>
       </Tabs>

@@ -167,6 +167,52 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user!.tenantId;
 
+    // 1. Tenta buscar do Supabase se o tenant tiver credenciais
+    try {
+      const supabaseUrl = req.headers['x-supabase-url'] as string;
+      const supabaseKey = req.headers['x-supabase-key'] as string;
+      const { getDynamicSupabaseClient } = await import('../lib/multiTenantSupabase');
+      
+      const supabase = await getDynamicSupabaseClient(tenantId, { 
+        url: supabaseUrl, 
+        key: supabaseKey 
+      });
+
+      if (supabase) {
+        console.log(`[MEETINGS] Buscando reuniões do Supabase para tenant ${tenantId}...`);
+        const { data: supabaseMeetings, error } = await supabase
+          .from('reunioes')
+          .select('*')
+          .order('data_inicio', { ascending: false });
+
+        if (!error && supabaseMeetings) {
+          // Normaliza os dados do Supabase para o formato do banco local
+          const normalizedMeetings = supabaseMeetings.map(m => ({
+            id: m.id,
+            tenantId: m.tenant_id,
+            titulo: m.titulo,
+            descricao: m.descricao,
+            dataInicio: new Date(m.data_inicio),
+            dataFim: new Date(m.data_fim),
+            duracao: m.duracao,
+            status: m.status,
+            participantes: m.participantes,
+            metadata: m.metadata,
+            nome: m.nome,
+            email: m.email,
+            telefone: m.telefone,
+            createdAt: m.created_at ? new Date(m.created_at) : null,
+            updatedAt: m.updated_at ? new Date(m.updated_at) : null,
+          }));
+          return res.json({ success: true, data: normalizedMeetings });
+        }
+        console.warn(`[MEETINGS] Erro ao buscar do Supabase, caindo para banco local:`, error);
+      }
+    } catch (err) {
+      console.warn(`[MEETINGS] Supabase não disponível, usando banco local:`, err);
+    }
+
+    // 2. Fallback para banco de dados local
     const meetings = await db
       .select()
       .from(reunioes)

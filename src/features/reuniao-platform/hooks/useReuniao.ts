@@ -7,6 +7,10 @@ async function apiRequest(method: string, url: string, data?: unknown) {
   const token = localStorage.getItem('auth_token');
   const headers: Record<string, string> = {};
   
+  // Headers dinâmicos do Supabase (para multi-tenant)
+  const supabaseUrl = localStorage.getItem('supabase_url');
+  const supabaseKey = localStorage.getItem('supabase_key');
+
   if (data) {
     headers["Content-Type"] = "application/json";
   }
@@ -14,6 +18,9 @@ async function apiRequest(method: string, url: string, data?: unknown) {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
+
+  if (supabaseUrl) headers["x-supabase-url"] = supabaseUrl;
+  if (supabaseKey) headers["x-supabase-key"] = supabaseKey;
   
   const response = await fetch(url, {
     method,
