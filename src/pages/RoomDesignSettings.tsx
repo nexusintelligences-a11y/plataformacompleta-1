@@ -451,10 +451,10 @@ export default function RoomDesignSettings() {
   const [isUploading, setIsUploading] = useState(false);
 
   const { data: tenant, isLoading } = useQuery({
-    queryKey: ["/api/tenant"],
+    queryKey: ["/api/reunioes/tenant-config"],
     queryFn: async () => {
-      const response = await api.get("/api/tenant");
-      return response.data;
+      const response = await api.get("/api/reunioes/tenant-config");
+      return response.data.data;
     },
   });
 
@@ -462,12 +462,12 @@ export default function RoomDesignSettings() {
     if (tenant?.roomDesignConfig) {
       setConfig(tenant.roomDesignConfig);
     } else if (tenant) {
+      // Use defaults if no config exists
       setConfig({
         ...DEFAULT_ROOM_DESIGN_CONFIG,
         branding: {
           ...DEFAULT_ROOM_DESIGN_CONFIG.branding,
-          logo: tenant.logoUrl,
-          companyName: tenant.nome,
+          companyName: tenant.id || "Empresa",
         },
       });
     }
@@ -475,7 +475,7 @@ export default function RoomDesignSettings() {
 
   const saveMutation = useMutation({
     mutationFn: async (newConfig: RoomDesignConfig) => {
-      const response = await api.patch("/api/tenant/room-design", { roomDesignConfig: newConfig });
+      const response = await api.patch("/api/reunioes/room-design", { roomDesignConfig: newConfig });
       return response.data;
     },
     onSuccess: () => {

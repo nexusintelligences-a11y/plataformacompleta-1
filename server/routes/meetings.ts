@@ -93,6 +93,76 @@ router.use((req: Request, res: Response, next) => {
   next();
 });
 
+router.patch('/room-design', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { roomDesignConfig } = req.body;
+
+    if (!roomDesignConfig) {
+      return res.status(400).json({
+        success: false,
+        message: 'roomDesignConfig é obrigatório',
+      });
+    }
+
+    const [updated] = await db
+      .update(meetingTenants)
+      .set({ roomDesignConfig, updatedAt: new Date() })
+      .where(eq(meetingTenants.id, tenantId))
+      .returning();
+
+    if (!updated) {
+      // Se o tenant não existir na tabela meeting_tenants, cria ele
+      const [newTenant] = await db
+        .insert(meetingTenants)
+        .values({
+          id: tenantId,
+          roomDesignConfig,
+        })
+        .returning();
+      
+      return res.json({ success: true, data: newTenant });
+    }
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('[MEETINGS] Erro ao atualizar design da sala:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar design da sala',
+    });
+  }
+});
+
+router.get('/tenant-config', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+
+    const [tenant] = await db
+      .select()
+      .from(meetingTenants)
+      .where(eq(meetingTenants.id, tenantId));
+
+    if (!tenant) {
+      return res.json({ 
+        success: true, 
+        data: { 
+          id: tenantId,
+          roomDesignConfig: null 
+        } 
+      });
+    }
+
+    return res.json({ success: true, data: tenant });
+  } catch (error) {
+    console.error('[MEETINGS] Erro ao obter configuração do tenant:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao obter configuração do tenant',
+    });
+  }
+});
+
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user!.tenantId;

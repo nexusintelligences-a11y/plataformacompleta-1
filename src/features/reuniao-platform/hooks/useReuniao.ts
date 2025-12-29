@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Meeting, CreateMeetingData } from "../types";
 
-const API_BASE = "/api/meetings";
+const API_BASE = "/api/reunioes";
 
 async function apiRequest(method: string, url: string, data?: unknown) {
   const token = localStorage.getItem('auth_token');
