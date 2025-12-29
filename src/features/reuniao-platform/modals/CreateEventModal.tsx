@@ -36,6 +36,8 @@ const formSchema = z.object({
   data: z.string().min(1, 'Data é obrigatória'),
   horaInicio: z.string().min(1, 'Hora de início é obrigatória'),
   horaFim: z.string().min(1, 'Hora de término é obrigatória'),
+  nomeCliente: z.string().min(1, 'Nome do cliente é obrigatório'),
+  emailCliente: z.string().email('E-mail inválido').min(1, 'E-mail do cliente é obrigatório'),
   local: z.string().optional(),
 });
 
@@ -62,6 +64,8 @@ export default function CreateEventModal({
       data: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       horaInicio: '09:00',
       horaFim: '10:00',
+      nomeCliente: '',
+      emailCliente: '',
       local: '',
     },
   });
@@ -81,7 +85,8 @@ export default function CreateEventModal({
 
       await addMeeting({
         titulo: values.titulo,
-        nome: values.tipo,
+        nome: values.nomeCliente,
+        email: values.emailCliente,
         dataInicio: dataInicio.toISOString(),
         dataFim: dataFim.toISOString(),
         duracao,
@@ -99,7 +104,7 @@ export default function CreateEventModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Agendar Nova Reunião</DialogTitle>
         </DialogHeader>
@@ -118,6 +123,36 @@ export default function CreateEventModal({
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="nomeCliente"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome do Cliente</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome completo" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="emailCliente"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-mail do Cliente</FormLabel>
+                    <FormControl>
+                      <Input placeholder="cliente@email.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="tipo"
