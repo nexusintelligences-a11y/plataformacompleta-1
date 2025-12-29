@@ -52,7 +52,7 @@ export default function CreateEventModal({
   defaultDate,
   onSuccess,
 }: CreateEventModalProps) {
-  const { createMeeting, isCreating } = useReuniao();
+  const { addMeeting, isCreating } = useReuniao();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -79,7 +79,7 @@ export default function CreateEventModal({
       
       const duracao = Math.round((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60));
 
-      await createMeeting({
+      await addMeeting({
         titulo: values.titulo,
         nome: values.tipo,
         dataInicio: dataInicio.toISOString(),
