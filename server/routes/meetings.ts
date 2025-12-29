@@ -119,8 +119,10 @@ router.patch('/room-design', async (req: AuthRequest, res: Response) => {
 
       if (supabase) {
         console.log(`[MEETINGS] Sincronizando design com Supabase para tenant ${tenantId}...`);
+        
+        // Tenta salvar na tabela meeting_tenant_config (conforme sugerido pelo erro do PostgREST)
         const { error: syncError } = await supabase
-          .from('meeting_tenants')
+          .from('meeting_tenant_config')
           .upsert({
             id: tenantId,
             room_design_config: roomDesignConfig,
@@ -128,9 +130,24 @@ router.patch('/room-design', async (req: AuthRequest, res: Response) => {
           });
 
         if (syncError) {
-          console.error(`[MEETINGS] Erro ao sincronizar design no Supabase:`, syncError);
+          console.error(`[MEETINGS] Erro ao sincronizar design no Supabase (tabela meeting_tenant_config):`, syncError);
+          
+          // Tenta fallback para meeting_tenants se a primeira falhar
+          const { error: fallbackError } = await supabase
+            .from('meeting_tenants')
+            .upsert({
+              id: tenantId,
+              room_design_config: roomDesignConfig,
+              updated_at: new Date().toISOString()
+            });
+            
+          if (fallbackError) {
+            console.error(`[MEETINGS] Falha final na sincronização Supabase:`, fallbackError);
+          } else {
+            console.log(`[MEETINGS] Design sincronizado com sucesso no Supabase (tabela meeting_tenants)!`);
+          }
         } else {
-          console.log(`[MEETINGS] Design sincronizado com sucesso no Supabase!`);
+          console.log(`[MEETINGS] Design sincronizado com sucesso no Supabase (tabela meeting_tenant_config)!`);
         }
       }
     } catch (err) {
@@ -195,18 +212,33 @@ router.get('/tenant-config', async (req: AuthRequest, res: Response) => {
       });
 
       if (supabase) {
-        const { data: supabaseTenant, error } = await supabase
-          .from('meeting_tenants')
+        // Tenta buscar da tabela meeting_tenant_config primeiro
+        let { data: supabaseTenant, error } = await supabase
+          .from('meeting_tenant_config')
           .select('*')
           .eq('id', tenantId)
           .single();
+
+        // Se não encontrar ou der erro de tabela não encontrada, tenta meeting_tenants
+        if (error || !supabaseTenant) {
+          const { data: altTenant, error: altError } = await supabase
+            .from('meeting_tenants')
+            .select('*')
+            .eq('id', tenantId)
+            .single();
+          
+          if (!altError && altTenant) {
+            supabaseTenant = altTenant;
+            error = null;
+          }
+        }
 
         if (!error && supabaseTenant) {
           return res.json({ 
             success: true, 
             data: {
               ...supabaseTenant,
-              roomDesignConfig: supabaseTenant.room_design_config
+              roomDesignConfig: supabaseTenant.room_design_config || supabaseTenant.roomDesignConfig
             } 
           });
         }
