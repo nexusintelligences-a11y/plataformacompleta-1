@@ -33,6 +33,9 @@ import HistoricoConsultasPage from "@/pages/historico-consultas";
 // Import Revendedora Platform
 import RevendedoraApp from "@/features/revendedora/RevendedoraApp";
 
+// Import Reuniao Platform
+import { ReuniaoHubPage } from "@/features/reuniao-platform";
+
 // Import Revendedora Admin components for /produto/admin/* routes
 import { CompanyProvider } from "@/features/revendedora/contexts/CompanyContext";
 import { AdminLayout } from "@/features/revendedora/layouts/AdminLayout";
@@ -473,6 +476,18 @@ const MobileApp = () => {
           <ProtectedRoute>
             <MobileLayout>
               <HistoricoConsultasPage />
+            </MobileLayout>
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Reuniao Platform - Plataforma de videoconferencia e reunioes */}
+      <Route 
+        path="/reuniao/*" 
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ReuniaoHubPage />
             </MobileLayout>
           </ProtectedRoute>
         } 
