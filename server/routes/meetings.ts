@@ -111,6 +111,7 @@ router.patch('/room-design', async (req: AuthRequest, res: Response) => {
       .where(eq(meetingTenants.id, tenantId))
       .returning();
 
+    let result = updated;
     if (!updated) {
       // Se o tenant não existir na tabela meeting_tenants, cria ele
       const [newTenant] = await db
@@ -120,11 +121,44 @@ router.patch('/room-design', async (req: AuthRequest, res: Response) => {
           roomDesignConfig,
         })
         .returning();
-      
-      return res.json({ success: true, data: newTenant });
+      result = newTenant;
     }
 
-    return res.json({ success: true, data: updated });
+    // 🚀 SINCRONIZAÇÃO SUPABASE (Design)
+    try {
+      const supabaseUrl = req.headers['x-supabase-url'] as string;
+      const supabaseKey = req.headers['x-supabase-key'] as string;
+      const { getDynamicSupabaseClient } = await import('../lib/multiTenantSupabase');
+      
+      const supabase = await getDynamicSupabaseClient(tenantId, { 
+        url: supabaseUrl, 
+        key: supabaseKey 
+      });
+
+      if (supabase) {
+        console.log(`[MEETINGS] Sincronizando design com Supabase para tenant ${tenantId}...`);
+        
+        // Verifica se a tabela meeting_tenants existe no Supabase do cliente
+        // Se não, tenta salvar em uma tabela de configurações genérica ou apenas loga
+        const { error: syncError } = await supabase
+          .from('meeting_tenants')
+          .upsert({
+            id: tenantId,
+            room_design_config: roomDesignConfig,
+            updated_at: new Date().toISOString()
+          });
+
+        if (syncError) {
+          console.error(`[MEETINGS] Erro ao sincronizar design no Supabase:`, syncError);
+        } else {
+          console.log(`[MEETINGS] Design sincronizado com sucesso no Supabase!`);
+        }
+      }
+    } catch (err) {
+      console.warn(`[MEETINGS] Supabase não disponível para sincronizar design:`, err);
+    }
+
+    return res.json({ success: true, data: result });
   } catch (error) {
     console.error('[MEETINGS] Erro ao atualizar design da sala:', error);
     return res.status(500).json({

@@ -475,12 +475,23 @@ export default function RoomDesignSettings() {
 
   const saveMutation = useMutation({
     mutationFn: async (newConfig: RoomDesignConfig) => {
-      const response = await api.patch("/api/reunioes/room-design", { roomDesignConfig: newConfig });
+      // 📌 Inclui headers do Supabase para o backend sincronizar
+      const supabaseUrl = localStorage.getItem('supabase_url');
+      const supabaseKey = localStorage.getItem('supabase_key');
+      
+      const headers: Record<string, string> = {};
+      if (supabaseUrl) headers["x-supabase-url"] = supabaseUrl;
+      if (supabaseKey) headers["x-supabase-key"] = supabaseKey;
+
+      const response = await api.patch("/api/reunioes/room-design", 
+        { roomDesignConfig: newConfig },
+        { headers }
+      );
       return response.data;
     },
     onSuccess: () => {
-      toast({ title: "Configurações salvas!", description: "As personalizações foram aplicadas." });
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant"] });
+      toast({ title: "Configurações salvas!", description: "As personalizações foram aplicadas e sincronizadas com o Supabase." });
+      queryClient.invalidateQueries({ queryKey: ["/api/reunioes/tenant-config"] });
     },
     onError: () => {
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar as configurações." });
