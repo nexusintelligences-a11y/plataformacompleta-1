@@ -22,6 +22,7 @@ import { setupComplianceRoutes } from "./routes/compliance";
 import formsAutomationAPIRoutes from "./routes/formsAutomationAPI";
 import { requireTenant } from "./middleware/requireTenant";
 import { leadsPipelineRoutes } from "./routes/leadsPipelineRoutes";
+import { registerAssinaturaRoutes } from "./routes/assinatura-routes";
 
 // Configure multer for logo uploads
 const logoStorage = multer.diskStorage({
@@ -98,6 +99,9 @@ export async function registerRoutes(app: Express) {
   registerWhatsAppCompleteRoutes(app);
   
   app.use("/api/formularios", requireTenant, formulariosRoutes);
+  
+  // Assinatura Platform Routes - Digital Signature with Facial Recognition
+  registerAssinaturaRoutes(app);
   
   // Note: leads-pipeline routes registered above (before requireTenant middleware)
   

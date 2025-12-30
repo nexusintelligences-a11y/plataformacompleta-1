@@ -398,3 +398,135 @@ export const insertWhatsappLabelSchema = createInsertSchema(whatsappLabels).omit
 
 export type InsertWhatsappLabel = z.infer<typeof insertWhatsappLabelSchema>;
 export type WhatsappLabel = typeof whatsappLabels.$inferSelect;
+
+// ============================================================================
+// ASSINATURA PLATFORM SCHEMA - Digital Signature with Facial Recognition
+// ============================================================================
+
+export const assinatura_users = pgTable("assinatura_users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  cpf: varchar("cpf", { length: 14 }).notNull().unique(),
+  nome_completo: varchar("nome_completo", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  telefone: varchar("telefone", { length: 20 }),
+  cep: varchar("cep", { length: 10 }),
+  rua: varchar("rua", { length: 255 }),
+  numero: varchar("numero", { length: 20 }),
+  cidade: varchar("cidade", { length: 100 }),
+  estado: varchar("estado", { length: 2 }),
+  endereco_completo: text("endereco_completo"),
+  govbr_verified: boolean("govbr_verified").default(false),
+  govbr_nivel_conta: varchar("govbr_nivel_conta", { length: 20 }),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const assinatura_contracts = pgTable("assinatura_contracts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  user_id: uuid("user_id").references(() => assinatura_users.id, { onDelete: "cascade" }),
+  contract_html: text("contract_html").notNull(),
+  contract_pdf_url: text("contract_pdf_url"),
+  status: varchar("status", { length: 50 }).default("pending"),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  signed_at: timestamp("signed_at", { withTimezone: true }),
+  protocol_number: varchar("protocol_number", { length: 50 }).unique(),
+  client_name: varchar("client_name").notNull().default(""),
+  client_cpf: varchar("client_cpf").notNull().default(""),
+  client_email: varchar("client_email").notNull().default(""),
+  client_phone: varchar("client_phone"),
+  access_token: uuid("access_token").defaultRandom().unique(),
+  logo_url: text("logo_url"),
+  logo_size: varchar("logo_size", { length: 20 }).default("medium"),
+  logo_position: varchar("logo_position", { length: 20 }).default("center"),
+  primary_color: varchar("primary_color", { length: 7 }),
+  text_color: varchar("text_color", { length: 7 }).default("#333333"),
+  font_family: varchar("font_family", { length: 100 }),
+  font_size: varchar("font_size", { length: 20 }),
+  company_name: varchar("company_name", { length: 255 }),
+  footer_text: text("footer_text"),
+  maleta_card_color: varchar("maleta_card_color", { length: 7 }).default("#dbeafe"),
+  maleta_button_color: varchar("maleta_button_color", { length: 7 }).default("#22c55e"),
+  maleta_text_color: varchar("maleta_text_color", { length: 7 }).default("#1e40af"),
+  verification_primary_color: varchar("verification_primary_color", { length: 7 }),
+  verification_text_color: varchar("verification_text_color", { length: 7 }).default("#000000"),
+  verification_font_family: varchar("verification_font_family", { length: 100 }),
+  verification_font_size: varchar("verification_font_size", { length: 20 }),
+  verification_logo_url: text("verification_logo_url"),
+  verification_logo_size: varchar("verification_logo_size", { length: 20 }),
+  verification_logo_position: varchar("verification_logo_position", { length: 20 }),
+  verification_footer_text: text("verification_footer_text"),
+  verification_background_image: text("verification_background_image"),
+  verification_background_color: varchar("verification_background_color", { length: 7 }).default("#ffffff"),
+  verification_icon_url: text("verification_icon_url"),
+  verification_welcome_text: varchar("verification_welcome_text", { length: 255 }),
+  verification_instructions: text("verification_instructions"),
+  verification_header_background_color: varchar("verification_header_background_color", { length: 7 }).default("#2c3e50"),
+  verification_header_logo_url: text("verification_header_logo_url"),
+  verification_header_company_name: varchar("verification_header_company_name", { length: 255 }),
+  progress_card_color: varchar("progress_card_color", { length: 7 }).default("#dbeafe"),
+  progress_button_color: varchar("progress_button_color", { length: 7 }).default("#22c55e"),
+  progress_text_color: varchar("progress_text_color", { length: 7 }).default("#1e40af"),
+  progress_title: varchar("progress_title", { length: 100 }).default("Assinatura Digital"),
+  progress_subtitle: text("progress_subtitle"),
+  progress_step1_title: varchar("progress_step1_title", { length: 255 }),
+  progress_step1_description: text("progress_step1_description"),
+  progress_step2_title: varchar("progress_step2_title", { length: 255 }),
+  progress_step2_description: text("progress_step2_description"),
+  progress_step3_title: varchar("progress_step3_title", { length: 255 }),
+  progress_step3_description: text("progress_step3_description"),
+  progress_button_text: varchar("progress_button_text", { length: 255 }),
+  progress_font_family: varchar("progress_font_family", { length: 100 }),
+  progress_font_size: varchar("progress_font_size", { length: 20 }),
+  app_store_url: text("app_store_url"),
+  google_play_url: text("google_play_url"),
+  selfie_photo: text("selfie_photo"),
+  document_photo: text("document_photo"),
+  signed_contract_html: text("signed_contract_html"),
+}, (table) => ({
+  userIdIdx: index("idx_assinatura_contracts_user_id").on(table.user_id),
+  statusIdx: index("idx_assinatura_contracts_status").on(table.status),
+  createdAtIdx: index("idx_assinatura_contracts_created_at").on(table.created_at.desc()),
+}));
+
+export const assinatura_signature_logs = pgTable("assinatura_signature_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  contract_id: uuid("contract_id").references(() => assinatura_contracts.id, { onDelete: "cascade" }),
+  ip_address: varchar("ip_address", { length: 45 }).notNull(),
+  user_agent: text("user_agent"),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+  govbr_token_hash: varchar("govbr_token_hash", { length: 255 }),
+  govbr_auth_time: timestamp("govbr_auth_time", { withTimezone: true }),
+  signature_valid: boolean("signature_valid").default(true),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  contractIdIdx: index("idx_assinatura_sig_logs_contract_id").on(table.contract_id),
+  createdAtIdx: index("idx_assinatura_sig_logs_created_at").on(table.created_at.desc()),
+}));
+
+export const assinatura_audit_trail = pgTable("assinatura_audit_trail", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  contract_id: uuid("contract_id").references(() => assinatura_contracts.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 100 }).notNull(),
+  user_id: uuid("user_id").references(() => assinatura_users.id),
+  metadata: jsonb("metadata"),
+  timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  contractIdIdx: index("idx_assinatura_audit_contract_id").on(table.contract_id),
+  createdAtIdx: index("idx_assinatura_audit_created_at").on(table.timestamp.desc()),
+}));
+
+// Schemas for assinatura
+export const insertAssinaturaUserSchema = createInsertSchema(assinatura_users).omit({ id: true, created_at: true });
+export const insertAssinaturaContractSchema = z.object({
+  user_id: z.string().uuid().nullable().optional(),
+  contract_html: z.string(),
+  client_name: z.string(),
+  client_cpf: z.string(),
+  client_email: z.string(),
+  client_phone: z.string().nullable().optional(),
+  status: z.string().optional(),
+}).partial();
+
+export type AssinातuraUser = typeof assinatura_users.$inferSelect;
+export type AssinaturaContract = typeof assinatura_contracts.$inferSelect;
+export type AssinaturaSignatureLog = typeof assinatura_signature_logs.$inferSelect;
+export type AssinaturaAuditTrail = typeof assinatura_audit_trail.$inferSelect;

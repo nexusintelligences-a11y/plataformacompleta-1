@@ -8,6 +8,7 @@ import {
   User,
   Palette,
   Video,
+  FileText,
 } from "lucide-react";
 import { useStore } from "@/lib/mock-store";
 
@@ -20,6 +21,7 @@ export function Sidebar() {
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Calendar, label: "Calendário", href: "/calendario" },
     { icon: Video, label: "Gravações", href: "/gravacoes" },
+    { icon: FileText, label: "Assinatura Digital", href: "/assinatura" },
     { icon: Palette, label: "Design da Sala", href: "/room-design" },
     { icon: Settings, label: "Configurações", href: "/configuracoes" },
   ];

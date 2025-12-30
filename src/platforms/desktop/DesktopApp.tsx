@@ -30,6 +30,7 @@ import FormularioPublicoWrapper from "@/features/formularios-platform/pages/Form
 import ConsultarCPFPage from "@/pages/consultar-cpf";
 import HistoricoConsultasPage from "@/pages/historico-consultas";
 import Gravacoes from "@/pages/Gravacoes";
+import AssinaturePage from "@/pages/Assinatura";
 
 // Import Revendedora Platform
 import RevendedoraApp from "@/features/revendedora/RevendedoraApp";
@@ -488,6 +489,17 @@ const DesktopApp = () => {
           <ProtectedRoute>
             <DesktopLayout>
               <Gravacoes />
+            </DesktopLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/assinatura" 
+        element={
+          <ProtectedRoute>
+            <DesktopLayout>
+              <AssinaturePage />
             </DesktopLayout>
           </ProtectedRoute>
         } 
