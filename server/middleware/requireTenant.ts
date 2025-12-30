@@ -12,6 +12,12 @@ export function requireTenant(req: Request, res: Response, next: NextFunction) {
   // Buscar tenantId da sessão (setado durante login)
   const tenantId = req.session?.tenantId;
   
+  // Em desenvolvimento, usar tenant ID fixo se não houver sessão
+  if (process.env.NODE_ENV === 'development' && (!tenantId || tenantId === 'undefined' || tenantId === 'null' || tenantId.trim() === '')) {
+    req.session.tenantId = 'f5d8c8d9-7c9e-4b8a-9c7d-4e3b8a9c7d4e';
+    return next();
+  }
+  
   // Validar se tenantId existe e é válido
   if (!tenantId || tenantId === 'undefined' || tenantId === 'null' || tenantId.trim() === '') {
     return res.status(401).json({

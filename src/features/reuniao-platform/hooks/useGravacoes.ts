@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 
 const API_BASE = "/api/reunioes";
 
@@ -39,22 +38,14 @@ async function apiRequest(method: string, url: string, data?: unknown) {
 
 export function useGravacoes() {
   const queryClient = useQueryClient();
-  const [tenantId, setTenantId] = useState<string | null>(null);
 
-  // Busca o tenant ID do localStorage quando o componente monta
-  useEffect(() => {
-    const stored = localStorage.getItem('tenant_id');
-    if (stored) {
-      setTenantId(stored);
-    }
-  }, []);
-
-  // 📌 Busca todas as gravações do tenant via API
+  // 📌 Busca todas as gravações do tenant via API (sem precisar de tenant_id)
+  // O servidor já sabe qual é o tenant_id da sessão
   const { data: gravacoesList = [], isLoading, error, refetch } = useQuery({
-    queryKey: [API_BASE, 'gravacoes', tenantId],
+    queryKey: [API_BASE, 'gravacoes'],
     queryFn: () => apiRequest("GET", `${API_BASE}/gravacoes/list`),
-    enabled: !!tenantId,
     staleTime: 30 * 1000,
+    retry: 3,
   });
 
   // Mutation para deletar gravação

@@ -80,6 +80,8 @@ router.use((req: Request, res: Response, next) => {
         email: 'dev@example.com',
         nome: 'Dev User'
       };
+      // 🔐 IMPORTANTE: Também popula req.session.tenantId para o middleware requireTenant
+      req.session.tenantId = DEV_TENANT_ID;
       return next();
     }
     return res.status(401).json({ success: false, message: 'Não autenticado' });

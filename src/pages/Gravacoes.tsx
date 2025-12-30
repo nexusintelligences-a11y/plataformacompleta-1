@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGravacoes } from "@/features/reuniao-platform/hooks/useGravacoes";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -63,6 +63,38 @@ export default function Gravacoes() {
   const { gravacoes, isLoading, deleteGravacao, getPlaybackUrl, isFetchingUrl, isDeleting } = useGravacoes();
   const [selectedGravacao, setSelectedGravacao] = useState<Gravacao | null>(null);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [processedGravacoes, setProcessedGravacoes] = useState<Gravacao[]>([]);
+
+  useEffect(() => {
+    // Normalize data from camelCase (API) to snake_case (interface) for compatibility
+    if (gravacoes && Array.isArray(gravacoes)) {
+      const normalized = gravacoes.map((g: any) => ({
+        id: g.id,
+        reuniao_id: g.reuniaoId,
+        tenant_id: g.tenantId,
+        room_id_100ms: g.roomId100ms,
+        session_id_100ms: g.sessionId100ms,
+        recording_id_100ms: g.recordingId100ms,
+        status: g.status,
+        started_at: g.startedAt,
+        stopped_at: g.stoppedAt,
+        duration: g.duration,
+        file_url: g.fileUrl,
+        file_size: g.fileSize,
+        thumbnail_url: g.thumbnailUrl,
+        created_at: g.createdAt,
+        reuniao: g.reuniao ? {
+          id: g.reuniao.id,
+          titulo: g.reuniao.titulo,
+          nome: g.reuniao.nome,
+          email: g.reuniao.email,
+          dataInicio: g.reuniao.dataInicio,
+          dataFim: g.reuniao.dataFim,
+        } : null
+      }));
+      setProcessedGravacoes(normalized);
+    }
+  }, [gravacoes]);
 
   const handlePlayRecording = async (gravacao: Gravacao) => {
     setSelectedGravacao(gravacao);
@@ -163,7 +195,7 @@ export default function Gravacoes() {
         </div>
       </div>
 
-      {gravacoes.length === 0 ? (
+      {processedGravacoes.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileVideo className="h-12 w-12 text-muted-foreground mb-4" />
@@ -182,7 +214,7 @@ export default function Gravacoes() {
               Suas Gravações
             </CardTitle>
             <CardDescription>
-              {gravacoes.length} gravação{gravacoes.length !== 1 ? "ões" : ""} encontrada{gravacoes.length !== 1 ? "s" : ""}
+              {processedGravacoes.length} gravação{processedGravacoes.length !== 1 ? "ões" : ""} encontrada{processedGravacoes.length !== 1 ? "s" : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -198,7 +230,7 @@ export default function Gravacoes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {gravacoes.map((gravacao) => (
+                {processedGravacoes.map((gravacao) => (
                   <TableRow key={gravacao.id}>
                     <TableCell>
                       <div>
