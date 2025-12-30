@@ -3,3 +3,7 @@
 [x] 3. Verificar e corrigir a exibição das gravações na página de Reuniões
 [x] 4. Reiniciar workflow e validar no frontend
 [x] 5. Documentar todas as alterações realizadas para o usuário
+[x] 6. Install the required packages (npm install)
+[x] 7. Configure workflow with webview output type for port 5000
+[x] 8. Restart the workflow and verify the project is working
+[x] 9. Complete project import
