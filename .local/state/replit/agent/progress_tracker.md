@@ -19,3 +19,7 @@
 [x] 19. Hook useGravacoes já existe e busca gravações via API /api/reunioes/gravacoes/list
 [x] 20. Rota GET /api/reunioes/gravacoes/list já existe com suporte a Supabase e banco local
 [x] 21. Sistema de gravações completo e funcional - pronto para uso
+[x] 22. Install npm dependencies for Replit environment migration
+[x] 23. Configure workflow with webview output type for port 5000
+[x] 24. Verify application starts and runs successfully
+[x] 25. Complete project import
