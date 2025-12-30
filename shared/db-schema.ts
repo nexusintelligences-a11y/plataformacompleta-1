@@ -1705,6 +1705,7 @@ export const gravacoes = pgTable("gravacoes", {
   roomId100ms: text("room_id_100ms"),
   sessionId100ms: text("session_id_100ms"),
   recordingId100ms: text("recording_id_100ms"),
+  assetId: text("asset_id"),
   status: text("status").default("recording"),
   startedAt: timestamp("started_at").defaultNow(),
   stoppedAt: timestamp("stopped_at"),

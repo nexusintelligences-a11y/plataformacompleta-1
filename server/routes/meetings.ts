@@ -851,6 +851,7 @@ router.post('/:id/recording/stop', async (req: AuthRequest, res: Response) => {
       .set({
         status: 'completed',
         stoppedAt: new Date(),
+        assetId: stopResult?.asset?.id || null,
         fileUrl: stopResult?.asset?.path || null,
         metadata: stopResult?.asset || {},
         updatedAt: new Date(),
@@ -892,7 +893,8 @@ router.get('/:id/gravacoes', async (req: AuthRequest, res: Response) => {
     const recordings = await db
       .select()
       .from(gravacoes)
-      .where(and(eq(gravacoes.reuniaoId, id), eq(gravacoes.tenantId, tenantId)));
+      .where(and(eq(gravacoes.reuniaoId, id), eq(gravacoes.tenantId, tenantId)))
+      .orderBy(desc(gravacoes.createdAt));
 
     return res.json({ success: true, data: recordings });
   } catch (error) {
@@ -937,6 +939,7 @@ router.get('/gravacoes/list', async (req: AuthRequest, res: Response) => {
         roomId100ms: gravacoes.roomId100ms,
         sessionId100ms: gravacoes.sessionId100ms,
         recordingId100ms: gravacoes.recordingId100ms,
+        assetId: gravacoes.assetId,
         status: gravacoes.status,
         startedAt: gravacoes.startedAt,
         stoppedAt: gravacoes.stoppedAt,
@@ -956,7 +959,8 @@ router.get('/gravacoes/list', async (req: AuthRequest, res: Response) => {
       })
       .from(gravacoes)
       .leftJoin(reunioes, eq(gravacoes.reuniaoId, reunioes.id))
-      .where(eq(gravacoes.tenantId, tenantId));
+      .where(eq(gravacoes.tenantId, tenantId))
+      .orderBy(desc(gravacoes.createdAt));
 
     return res.json(recordings);
   } catch (error) {
@@ -1020,7 +1024,7 @@ router.get('/gravacoes/:id/url', async (req: AuthRequest, res: Response) => {
 
     const { obterUrlPresignadaAsset } = await import('../services/meetings/hms100ms');
     const presignedUrl = await obterUrlPresignadaAsset(
-      gravacao.recordingId100ms,
+      gravacao.assetId || gravacao.recordingId100ms!,
       hmsCredentials.appAccessKey,
       hmsCredentials.appSecret
     );
