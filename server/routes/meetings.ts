@@ -822,18 +822,37 @@ router.post('/:id/recording/stop', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const stopResult = await pararGravacao(
-      meeting.roomId100ms,
-      hmsCredentials.appAccessKey,
-      hmsCredentials.appSecret
-    );
+    let stopResult: any = null;
+    let error100ms: any = null;
 
-    await db
+    try {
+      stopResult = await pararGravacao(
+        meeting.roomId100ms,
+        hmsCredentials.appAccessKey,
+        hmsCredentials.appSecret
+      );
+      console.log('[MEETINGS] Gravação parada com sucesso no 100ms:', stopResult);
+    } catch (err: any) {
+      // 404 significa que a gravação/beam já não existe no 100ms
+      // Isso é OK - ainda queremos marcar como 'completed' localmente
+      if (err.response?.status === 404) {
+        console.log('[MEETINGS] 404 ao parar gravação (beam não encontrado) - gravação já pode estar parada');
+        error100ms = err;
+        // Continuar mesmo com erro 404
+      } else {
+        // Outros erros são re-lançados
+        throw err;
+      }
+    }
+
+    // Atualizar gravação como 'completed' mesmo se houver erro 404 do 100ms
+    const updateResult = await db
       .update(gravacoes)
       .set({
         status: 'completed',
         stoppedAt: new Date(),
-        fileUrl: stopResult.asset?.path,
+        fileUrl: stopResult?.asset?.path || null,
+        metadata: stopResult?.asset || {},
         updatedAt: new Date(),
       })
       .where(
@@ -844,12 +863,23 @@ router.post('/:id/recording/stop', async (req: AuthRequest, res: Response) => {
         )
       );
 
-    return res.json({ success: true, data: stopResult });
-  } catch (error) {
+    console.log('[MEETINGS] Gravação atualizada no banco de dados:', updateResult);
+
+    return res.json({ 
+      success: true, 
+      data: stopResult || { message: 'Gravação parada (beam não encontrado no 100ms, mas marcada como concluída localmente)' }
+    });
+  } catch (error: any) {
     console.error('[MEETINGS] Erro ao parar gravação:', error);
+    console.error('[MEETINGS] Erro completo:', {
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+      data: error.response?.data,
+    });
+    
     return res.status(500).json({
       success: false,
-      message: 'Erro ao parar gravação',
+      message: 'Erro ao parar gravação: ' + (error.response?.data?.message || error.message),
     });
   }
 });

@@ -492,6 +492,8 @@ export function Meeting100ms({
     setIsRecordingLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
+      console.log('[Meeting100ms] Iniciando gravação para reunião:', meetingId);
+      
       const response = await fetch(`/api/reunioes/${meetingId}/recording/start`, {
         method: 'POST',
         headers: {
@@ -505,11 +507,15 @@ export function Meeting100ms({
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao iniciar gravação');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData?.message || `HTTP ${response.status}`;
+        console.error('[Meeting100ms] Erro ao iniciar gravação:', errorMsg);
+        throw new Error(`Falha ao iniciar gravação: ${errorMsg}`);
       }
 
-      console.log('[Meeting100ms] Gravação iniciada com sucesso');
-    } catch (err) {
+      const data = await response.json();
+      console.log('[Meeting100ms] Gravação iniciada com sucesso:', data);
+    } catch (err: any) {
       console.error('[Meeting100ms] Erro ao iniciar gravação:', err);
       throw err;
     } finally {
@@ -521,6 +527,8 @@ export function Meeting100ms({
     setIsRecordingLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
+      console.log('[Meeting100ms] Parando gravação para reunião:', meetingId);
+      
       const response = await fetch(`/api/reunioes/${meetingId}/recording/stop`, {
         method: 'POST',
         headers: {
@@ -530,14 +538,25 @@ export function Meeting100ms({
         credentials: 'include',
       });
 
+      // Log detalhado da resposta
+      console.log('[Meeting100ms] Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Erro ao parar gravação');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData?.message || `HTTP ${response.status}`;
+        console.error('[Meeting100ms] Erro ao parar gravação:', errorMsg);
+        console.error('[Meeting100ms] Dados de erro completo:', errorData);
+        
+        // Ainda assim marca como parado localmente (a gravação pode estar já parada no 100ms)
+        throw new Error(`Falha ao parar gravação: ${errorMsg}`);
       }
 
-      console.log('[Meeting100ms] Gravação parada com sucesso');
-    } catch (err) {
-      console.error('[Meeting100ms] Erro ao parar gravação:', err);
-      throw err;
+      const data = await response.json();
+      console.log('[Meeting100ms] Gravação parada com sucesso:', data);
+    } catch (err: any) {
+      console.error('[Meeting100ms] Erro ao parar gravação - mas marcando como parado localmente:', err);
+      // NÃO relançar erro aqui - deixar o estado ser atualizado mesmo com erro
+      // porque a gravação pode já estar parada no backend
     } finally {
       setIsRecordingLoading(false);
     }
