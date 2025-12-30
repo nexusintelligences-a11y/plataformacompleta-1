@@ -29,6 +29,7 @@ import PublicForm from "@/features/formularios-platform/pages/PublicForm";
 import FormularioPublicoWrapper from "@/features/formularios-platform/pages/FormularioPublicoWrapper";
 import ConsultarCPFPage from "@/pages/consultar-cpf";
 import HistoricoConsultasPage from "@/pages/historico-consultas";
+import Gravacoes from "@/pages/Gravacoes";
 
 // Import Revendedora Platform
 import RevendedoraApp from "@/features/revendedora/RevendedoraApp";
@@ -476,6 +477,17 @@ const DesktopApp = () => {
           <ProtectedRoute>
             <DesktopLayout>
               <HistoricoConsultasPage />
+            </DesktopLayout>
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/gravacoes" 
+        element={
+          <ProtectedRoute>
+            <DesktopLayout>
+              <Gravacoes />
             </DesktopLayout>
           </ProtectedRoute>
         } 

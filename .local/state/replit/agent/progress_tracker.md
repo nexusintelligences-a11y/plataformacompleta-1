@@ -7,3 +7,5 @@
 [x] 7. Configure workflow with webview output type for port 5000
 [x] 8. Restart the workflow and verify the project is working
 [x] 9. Complete project import
+[x] 10. Create Gravações page route and register in DesktopApp
+[x] 11. Verify gravações page is accessible and loading recordings
