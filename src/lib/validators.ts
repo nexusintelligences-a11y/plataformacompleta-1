@@ -1,65 +1,98 @@
-import { z } from "zod";
+// CPF validation algorithm
+export const validateCPF = (cpf: string): boolean => {
+  const cleanCPF = cpf.replace(/\D/g, '');
+  
+  if (cleanCPF.length !== 11) return false;
+  
+  // Check for known invalid patterns
+  if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
+  
+  // Validate first digit
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+  
+  // Validate second digit
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
+  
+  return true;
+};
 
-// Validators
-export const cpfValidator = z.string().regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/, "CPF inválido");
-export const phoneValidator = z.string().regex(/^\(\d{2}\)\s\d{4,5}-\d{4}$|^\d{10,11}$/, "Telefone inválido");
-export const emailValidator = z.string().email("Email inválido");
-export const cnpjValidator = z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$|^\d{14}$/, "CNPJ inválido");
+// CPF mask: 000.000.000-00
+export const maskCPF = (value: string): string => {
+  const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+  return cleanValue
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+};
 
-// Masks/Formatters
-export function maskCPF(value: string): string {
-  const cleaned = value.replace(/\D/g, '');
-  return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-}
+// Alias for maskCPF
+export const formatCPF = maskCPF;
 
-export function maskPhone(value: string): string {
-  const cleaned = value.replace(/\D/g, '');
-  return cleaned.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
-}
+// Phone mask: (00) 00000-0000
+export const maskPhone = (value: string): string => {
+  const cleanValue = value.replace(/\D/g, '').slice(0, 11);
+  return cleanValue
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+};
 
-export function formatDate(date: Date | string): string {
+// Alias for maskPhone
+export const formatPhone = maskPhone;
+
+// CEP mask: 00000-000
+export const maskCEP = (value: string): string => {
+  const cleanValue = value.replace(/\D/g, '').slice(0, 8);
+  return cleanValue.replace(/(\d{5})(\d)/, '$1-$2');
+};
+
+// Email validation
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+// Phone validation
+export const validatePhone = (phone: string): boolean => {
+  const cleanPhone = phone.replace(/\D/g, '');
+  return cleanPhone.length >= 10 && cleanPhone.length <= 11;
+};
+
+// CEP validation
+export const validateCEP = (cep: string): boolean => {
+  const cleanCEP = cep.replace(/\D/g, '');
+  return cleanCEP.length === 8;
+};
+
+// Generate protocol number
+export const generateProtocolNumber = (): string => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `CTR-${year}${month}${day}-${random}`;
+};
+
+// Format date for display
+export const formatDate = (date: Date | string): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('pt-BR');
-}
-
-export function formatCPF(cpf: string): string {
-  return maskCPF(cpf);
-}
-
-export function formatPhone(phone: string): string {
-  return maskPhone(phone);
-}
-
-export function generateProtocolNumber(): string {
-  return `PROT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// Validators
-export function validateCPF(cpf: string): boolean {
-  const cleaned = cpf.replace(/\D/g, '');
-  if (cleaned.length !== 11) return false;
-  return /^\d{11}$/.test(cleaned) && cleaned !== '00000000000';
-}
-
-export function validatePhone(phone: string): boolean {
-  const cleaned = phone.replace(/\D/g, '');
-  return cleaned.length >= 10 && cleaned.length <= 11;
-}
-
-export function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-export const basePersonSchema = z.object({
-  nome: z.string().min(2, "Nome é obrigatório"),
-  email: emailValidator,
-  cpf: cpfValidator,
-  telefone: phoneValidator.optional(),
-});
-
-export const baseCompanySchema = z.object({
-  nome: z.string().min(2, "Nome é obrigatório"),
-  cnpj: cnpjValidator,
-  email: emailValidator,
-  telefone: phoneValidator.optional(),
-});
+  return d.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
