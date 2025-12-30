@@ -5,7 +5,7 @@
 [x] 5. Documentar todas as alterações realizadas para o usuário
 [x] 6. Install the required packages (npm install)
 [x] 7. Configure workflow with webview output type for port 5000
-[x] 8. Restart the workflow and verify the project is working
+[x] 8. Restart the workflow and verify the project is running
 [x] 9. Complete project import
 [x] 10. Create Gravações page route and register in DesktopApp
 [x] 11. Verify gravações page is accessible and loading recordings
@@ -15,3 +15,7 @@
 [x] 15. Install npm dependencies for Replit environment
 [x] 16. Configure workflow with webview output type for port 5000
 [x] 17. Verify application is running successfully
+[x] 18. Página Gravacoes.tsx já existe e está pronta para exibir gravações do Supabase
+[x] 19. Hook useGravacoes já existe e busca gravações via API /api/reunioes/gravacoes/list
+[x] 20. Rota GET /api/reunioes/gravacoes/list já existe com suporte a Supabase e banco local
+[x] 21. Sistema de gravações completo e funcional - pronto para uso
