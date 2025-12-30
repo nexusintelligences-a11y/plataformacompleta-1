@@ -894,6 +894,147 @@ router.get('/:id/transcricoes', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// 📌 GET all recordings for tenant (for Gravacoes page)
+router.get('/gravacoes/list', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+
+    const recordings = await db
+      .select({
+        id: gravacoes.id,
+        reuniaoId: gravacoes.reuniaoId,
+        tenantId: gravacoes.tenantId,
+        roomId100ms: gravacoes.roomId100ms,
+        sessionId100ms: gravacoes.sessionId100ms,
+        recordingId100ms: gravacoes.recordingId100ms,
+        status: gravacoes.status,
+        startedAt: gravacoes.startedAt,
+        stoppedAt: gravacoes.stoppedAt,
+        duration: gravacoes.duration,
+        fileUrl: gravacoes.fileUrl,
+        fileSize: gravacoes.fileSize,
+        thumbnailUrl: gravacoes.thumbnailUrl,
+        createdAt: gravacoes.createdAt,
+        reuniao: {
+          id: reunioes.id,
+          titulo: reunioes.titulo,
+          nome: reunioes.nome,
+          email: reunioes.email,
+          dataInicio: reunioes.dataInicio,
+          dataFim: reunioes.dataFim,
+        }
+      })
+      .from(gravacoes)
+      .leftJoin(reunioes, eq(gravacoes.reuniaoId, reunioes.id))
+      .where(eq(gravacoes.tenantId, tenantId));
+
+    return res.json(recordings);
+  } catch (error) {
+    console.error('[MEETINGS] Erro ao listar gravações:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao listar gravações',
+    });
+  }
+});
+
+// 📌 GET presigned URL for recording playback
+router.get('/gravacoes/:id/url', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+
+    const [gravacao] = await db
+      .select()
+      .from(gravacoes)
+      .where(and(eq(gravacoes.id, id), eq(gravacoes.tenantId, tenantId)));
+
+    if (!gravacao) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gravação não encontrada',
+      });
+    }
+
+    if (gravacao.status === 'recording') {
+      return res.status(400).json({
+        success: false,
+        message: 'Gravação ainda está em andamento',
+        status: 'recording',
+      });
+    }
+
+    if (gravacao.status === 'failed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Gravação falhou ou é muito curta',
+        status: 'failed',
+      });
+    }
+
+    if (!gravacao.recordingId100ms) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID da gravação não encontrado',
+      });
+    }
+
+    const hmsCredentials = await getHMS100msCredentials(tenantId);
+
+    if (!hmsCredentials) {
+      return res.status(400).json({
+        success: false,
+        message: 'Credenciais do 100ms não configuradas',
+      });
+    }
+
+    const { obterUrlPresignadaAsset } = await import('../services/meetings/hms100ms');
+    const presignedUrl = await obterUrlPresignadaAsset(
+      gravacao.recordingId100ms,
+      hmsCredentials.appAccessKey,
+      hmsCredentials.appSecret
+    );
+
+    return res.json({ url: presignedUrl.url });
+  } catch (error: any) {
+    console.error('[MEETINGS] Erro ao obter URL presignada:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao obter URL da gravação',
+    });
+  }
+});
+
+// 📌 DELETE recording
+router.delete('/gravacoes/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+
+    const [gravacao] = await db
+      .select()
+      .from(gravacoes)
+      .where(and(eq(gravacoes.id, id), eq(gravacoes.tenantId, tenantId)));
+
+    if (!gravacao) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gravação não encontrada',
+      });
+    }
+
+    await db.delete(gravacoes).where(eq(gravacoes.id, id));
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[MEETINGS] Erro ao deletar gravação:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro ao deletar gravação',
+    });
+  }
+});
+
 router.get('/:id/token', async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.user!.tenantId;

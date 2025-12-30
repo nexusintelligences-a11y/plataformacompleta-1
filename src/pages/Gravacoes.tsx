@@ -71,14 +71,14 @@ export default function Gravacoes() {
   const { data: gravacoes = [], isLoading } = useQuery<Gravacao[]>({
     queryKey: ["gravacoes"],
     queryFn: async () => {
-      const response = await api.get("/api/gravacoes");
+      const response = await api.get("/api/reunioes/gravacoes/list");
       return response.data;
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/api/gravacoes/${id}`);
+      await api.delete(`/api/reunioes/gravacoes/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["gravacoes"] });
@@ -102,7 +102,7 @@ export default function Gravacoes() {
     setPlaybackUrl(null);
 
     try {
-      const response = await api.get(`/api/gravacoes/${gravacao.id}/url`);
+      const response = await api.get(`/api/reunioes/gravacoes/${gravacao.id}/url`);
       setPlaybackUrl(response.data.url);
     } catch (error: any) {
       const errorData = error.response?.data;

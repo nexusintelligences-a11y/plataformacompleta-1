@@ -199,10 +199,18 @@ function Controls({
   onLeave,
   config,
   onReact,
+  meetingId,
+  onStartRecording,
+  onStopRecording,
+  isRecordingLoading,
 }: {
   onLeave: () => void;
   config: RoomDesignConfig;
   onReact: (emoji: string) => void;
+  meetingId?: string;
+  onStartRecording?: () => Promise<void>;
+  onStopRecording?: () => Promise<void>;
+  isRecordingLoading?: boolean;
 }) {
   const [isLocalAudioEnabled, setIsLocalAudioEnabled] = useState(true);
   const [isLocalVideoEnabled, setIsLocalVideoEnabled] = useState(true);
@@ -275,9 +283,25 @@ function Controls({
   };
 
   const toggleRecording = async () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      setRecordingTimer(0);
+    if (isRecordingLoading) return;
+
+    try {
+      if (!isRecording) {
+        if (onStartRecording) {
+          await onStartRecording();
+        }
+        setIsRecording(true);
+        setRecordingTimer(0);
+      } else {
+        if (onStopRecording) {
+          await onStopRecording();
+        }
+        setIsRecording(false);
+        setRecordingTimer(0);
+      }
+    } catch (error) {
+      console.error('Erro ao controlar gravação:', error);
+      setIsRecording(false);
     }
   };
 
@@ -366,6 +390,7 @@ function Controls({
               variant="ghost"
               size="icon"
               onClick={toggleRecording}
+              disabled={isRecordingLoading}
               className={cn(
                 "rounded-full h-12 w-12",
                 isRecording
@@ -373,16 +398,20 @@ function Controls({
                   : "bg-zinc-800 hover:bg-zinc-700"
               )}
             >
-              <Circle
-                className={cn(
-                  "h-5 w-5 text-white",
-                  isRecording && "fill-current animate-pulse"
-                )}
-              />
+              {isRecordingLoading ? (
+                <Loader2 className="h-5 w-5 text-white animate-spin" />
+              ) : (
+                <Circle
+                  className={cn(
+                    "h-5 w-5 text-white",
+                    isRecording && "fill-current animate-pulse"
+                  )}
+                />
+              )}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {isRecording ? `Gravando ${formatTime(recordingTimer)}` : "Iniciar gravação"}
+            {isRecordingLoading ? "Processando..." : isRecording ? `Gravando ${formatTime(recordingTimer)}` : "Iniciar gravação"}
           </TooltipContent>
         </Tooltip>
 
@@ -455,8 +484,64 @@ export function Meeting100ms({
   const [peers, setPeers] = useState<HMSPeer[]>([]);
   const [reactions, setReactions] = useState<{ id: string; emoji: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isRecordingLoading, setIsRecordingLoading] = useState(false);
 
   const config = roomDesignConfig || DEFAULT_ROOM_DESIGN_CONFIG;
+
+  const handleStartRecording = async () => {
+    setIsRecordingLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/reunioes/${meetingId}/recording/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          meetingUrl: `https://app.100ms.live/meeting/${roomId}`
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao iniciar gravação');
+      }
+
+      console.log('[Meeting100ms] Gravação iniciada com sucesso');
+    } catch (err) {
+      console.error('[Meeting100ms] Erro ao iniciar gravação:', err);
+      throw err;
+    } finally {
+      setIsRecordingLoading(false);
+    }
+  };
+
+  const handleStopRecording = async () => {
+    setIsRecordingLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/reunioes/${meetingId}/recording/stop`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao parar gravação');
+      }
+
+      console.log('[Meeting100ms] Gravação parada com sucesso');
+    } catch (err) {
+      console.error('[Meeting100ms] Erro ao parar gravação:', err);
+      throw err;
+    } finally {
+      setIsRecordingLoading(false);
+    }
+  };
 
   useEffect(() => {
     const unsubConnected = hmsStore.subscribe(setIsConnected, selectIsConnectedToRoom);
@@ -645,7 +730,15 @@ export function Meeting100ms({
       ))}
 
       <div className="flex justify-center pb-6">
-        <Controls onLeave={onLeave} config={config} onReact={handleReact} />
+        <Controls 
+          onLeave={onLeave} 
+          config={config} 
+          onReact={handleReact}
+          meetingId={meetingId}
+          onStartRecording={handleStartRecording}
+          onStopRecording={handleStopRecording}
+          isRecordingLoading={isRecordingLoading}
+        />
       </div>
     </div>
   );
