@@ -232,9 +232,7 @@ export async function obterUrlPresignadaAsset(
   const token = generateManagementToken(appAccessKey, appSecret);
 
   try {
-    // 100ms API V2 for presigned URL needs the asset ID in the path
-    // and optionally a RemotePath if the asset is not yet available or stored elsewhere
-    // but typically just the assetId is enough if the recording is processed.
+    // Tenta primeiro o endpoint padrão
     const response = await axios.get(`${HMS_API_URL}/recording-assets/${assetId}/presigned-url`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -245,11 +243,12 @@ export async function obterUrlPresignadaAsset(
   } catch (error: any) {
     console.error(`[HMS] Erro ao obter URL presignada para asset ${assetId}:`, error.response?.data || error.message);
     
-    // If RemotePath is missing error occurs, we might need to fetch the asset first to get its path
-    if (error.response?.data?.message?.includes('RemotePath is missing')) {
-      console.log(`[HMS] Tentando obter RemotePath para asset ${assetId}...`);
+    // ESTRATÉGIA DE RECUPERAÇÃO: Se o assetId falhar, tenta listar assets da sala se soubermos o ID
+    // Ou tenta buscar o asset primeiro para ver se ele existe
+    try {
       const asset = await obterAssetGravacao(assetId, appAccessKey, appSecret);
       if (asset && asset.path) {
+        console.log(`[HMS] Recuperando via path direto: ${asset.path}`);
         const retryResponse = await axios.get(`${HMS_API_URL}/recording-assets/${assetId}/presigned-url`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -260,7 +259,10 @@ export async function obterUrlPresignadaAsset(
         });
         return retryResponse.data;
       }
+    } catch (innerError) {
+      console.error(`[HMS] Falha na recuperação de asset ${assetId}:`, innerError);
     }
+    
     throw error;
   }
 }

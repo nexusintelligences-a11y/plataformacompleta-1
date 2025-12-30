@@ -1175,9 +1175,34 @@ router.get('/gravacoes/:id/url', async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const { obterUrlPresignadaAsset } = await import('../services/meetings/hms100ms');
+    const { obterUrlPresignadaAsset, obterAssetIdPorRecordingId, obterAssetGravacao } = await import('../services/meetings/hms100ms');
+    
+    let assetIdToUse = gravacao.assetId;
+    
+    // Se não tiver assetId, tenta recuperar pelo recordingId
+    if (!assetIdToUse && gravacao.recordingId100ms) {
+      console.log(`[MEETINGS] Recuperando assetId faltante para gravação ${id}...`);
+      assetIdToUse = await obterAssetIdPorRecordingId(
+        gravacao.recordingId100ms,
+        hmsCredentials.appAccessKey,
+        hmsCredentials.appSecret
+      );
+      
+      if (assetIdToUse) {
+        // Atualiza no banco para futuras requisições
+        await db.update(gravacoes).set({ assetId: assetIdToUse }).where(eq(gravacoes.id, id));
+      }
+    }
+
+    if (!assetIdToUse) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID do asset não encontrado e não pôde ser recuperado',
+      });
+    }
+
     const presignedUrl = await obterUrlPresignadaAsset(
-      gravacao.assetId || gravacao.recordingId100ms!,
+      assetIdToUse,
       hmsCredentials.appAccessKey,
       hmsCredentials.appSecret
     );
