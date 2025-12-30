@@ -769,7 +769,7 @@ router.post('/:id/recording/start', async (req: AuthRequest, res: Response) => {
       meetingUrl || `https://app.100ms.live/meeting/${meeting.roomId100ms}`
     );
 
-    await db.insert(gravacoes).values({
+    const [newRecording] = await db.insert(gravacoes).values({
       reuniaoId: id,
       tenantId,
       roomId100ms: meeting.roomId100ms,
@@ -777,7 +777,30 @@ router.post('/:id/recording/start', async (req: AuthRequest, res: Response) => {
       sessionId100ms: recordingResult.session_id,
       status: 'recording',
       startedAt: new Date(),
-    });
+    }).returning();
+
+    // 🚀 SINCRONIZAÇÃO SUPABASE (Recording Start)
+    try {
+      const { getDynamicSupabaseClient } = await import('../lib/multiTenantSupabase');
+      const supabase = await getDynamicSupabaseClient(tenantId);
+      if (supabase && newRecording) {
+        await supabase
+          .from('gravacoes')
+          .insert({
+            id: newRecording.id,
+            reuniao_id: newRecording.reuniaoId,
+            tenant_id: newRecording.tenantId,
+            room_id_100ms: newRecording.roomId100ms,
+            recording_id_100ms: newRecording.recordingId100ms,
+            session_id_100ms: newRecording.sessionId100ms,
+            status: newRecording.status,
+            started_at: newRecording.startedAt.toISOString(),
+            created_at: new Date().toISOString()
+          });
+      }
+    } catch (syncErr) {
+      console.error('[MEETINGS] Erro ao sincronizar gravação (start) no Supabase:', syncErr);
+    }
 
     return res.json({ success: true, data: recordingResult });
   } catch (error) {
@@ -833,27 +856,81 @@ router.post('/:id/recording/stop', async (req: AuthRequest, res: Response) => {
       );
       console.log('[MEETINGS] Gravação parada com sucesso no 100ms:', stopResult);
     } catch (err: any) {
-      // 404 significa que a gravação/beam já não existe no 100ms
-      // Isso é OK - ainda queremos marcar como 'completed' localmente
       if (err.response?.status === 404) {
         console.log('[MEETINGS] 404 ao parar gravação (beam não encontrado) - gravação já pode estar parada');
         error100ms = err;
-        // Continuar mesmo com erro 404
       } else {
-        // Outros erros são re-lançados
         throw err;
       }
     }
 
-    // Atualizar gravação como 'completed' mesmo se houver erro 404 do 100ms
-    const updateResult = await db
+    // 🚀 TENTATIVA DE RECUPERAÇÃO DE ASSET ID (Cascata)
+    let finalAssetId = stopResult?.asset?.id || null;
+    let finalFileUrl = stopResult?.asset?.path || null;
+    let finalMetadata = stopResult?.asset || {};
+
+    if (!finalAssetId) {
+      console.log('[MEETINGS] AssetId não retornado no stop, tentando obter por recordingId...');
+      const [gravacaoPendente] = await db
+        .select()
+        .from(gravacoes)
+        .where(
+          and(
+            eq(gravacoes.reuniaoId, id),
+            eq(gravacoes.status, 'recording')
+          )
+        )
+        .limit(1);
+
+      if (gravacaoPendente?.recordingId100ms) {
+        const { obterAssetIdPorRecordingId, listarAssetsRecentesSala, obterAssetGravacao } = await import('../services/meetings/hms100ms');
+        
+        // Estratégia 1: Por Recording ID
+        finalAssetId = await obterAssetIdPorRecordingId(
+          gravacaoPendente.recordingId100ms,
+          hmsCredentials.appAccessKey,
+          hmsCredentials.appSecret
+        );
+
+        // Estratégia 2: Assets recentes da sala
+        if (!finalAssetId) {
+          console.log('[MEETINGS] Estratégia 2: Buscando assets recentes da sala...');
+          const recentAssets = await listarAssetsRecentesSala(
+            meeting.roomId100ms,
+            hmsCredentials.appAccessKey,
+            hmsCredentials.appSecret
+          );
+          if (recentAssets.length > 0) {
+            finalAssetId = recentAssets[0].id;
+          }
+        }
+
+        // Se encontrou o Asset ID, busca os detalhes (URL/Path)
+        if (finalAssetId) {
+          try {
+            const assetDetails = await obterAssetGravacao(
+              finalAssetId,
+              hmsCredentials.appAccessKey,
+              hmsCredentials.appSecret
+            );
+            finalFileUrl = assetDetails?.path || null;
+            finalMetadata = assetDetails || {};
+          } catch (assetErr) {
+            console.error('[MEETINGS] Erro ao buscar detalhes do asset recuperado:', assetErr);
+          }
+        }
+      }
+    }
+
+    // Atualizar gravação como 'completed'
+    const [updatedRecording] = await db
       .update(gravacoes)
       .set({
         status: 'completed',
         stoppedAt: new Date(),
-        assetId: stopResult?.asset?.id || null,
-        fileUrl: stopResult?.asset?.path || null,
-        metadata: stopResult?.asset || {},
+        assetId: finalAssetId,
+        fileUrl: finalFileUrl,
+        metadata: finalMetadata,
         updatedAt: new Date(),
       })
       .where(
@@ -862,9 +939,31 @@ router.post('/:id/recording/stop', async (req: AuthRequest, res: Response) => {
           eq(gravacoes.tenantId, tenantId),
           eq(gravacoes.status, 'recording')
         )
-      );
+      )
+      .returning();
 
-    console.log('[MEETINGS] Gravação atualizada no banco de dados:', updateResult);
+    // 🚀 SINCRONIZAÇÃO SUPABASE (Recording Stop)
+    try {
+      const { getDynamicSupabaseClient } = await import('../lib/multiTenantSupabase');
+      const supabase = await getDynamicSupabaseClient(tenantId);
+      if (supabase && updatedRecording) {
+        await supabase
+          .from('gravacoes')
+          .update({
+            status: updatedRecording.status,
+            stopped_at: updatedRecording.stoppedAt?.toISOString(),
+            asset_id: updatedRecording.assetId,
+            file_url: updatedRecording.fileUrl,
+            metadata: updatedRecording.metadata,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', updatedRecording.id);
+      }
+    } catch (syncErr) {
+      console.error('[MEETINGS] Erro ao sincronizar gravação (stop) no Supabase:', syncErr);
+    }
+
+    console.log('[MEETINGS] Gravação atualizada:', updatedRecording);
 
     return res.json({ 
       success: true, 
@@ -961,6 +1060,51 @@ router.get('/gravacoes/list', async (req: AuthRequest, res: Response) => {
       .leftJoin(reunioes, eq(gravacoes.reuniaoId, reunioes.id))
       .where(eq(gravacoes.tenantId, tenantId))
       .orderBy(desc(gravacoes.createdAt));
+
+    // 🚀 SINCRONIZAÇÃO SUPABASE (Listagem)
+    try {
+      const { getDynamicSupabaseClient } = await import('../lib/multiTenantSupabase');
+      const supabase = await getDynamicSupabaseClient(tenantId);
+      
+      if (supabase) {
+        console.log(`[MEETINGS] Buscando gravações do Supabase para tenant ${tenantId}...`);
+        const { data: supabaseRecordings, error } = await supabase
+          .from('gravacoes')
+          .select('*, reunioes(*)')
+          .order('created_at', { ascending: false });
+
+        if (!error && supabaseRecordings && supabaseRecordings.length > 0) {
+          const normalizedRecordings = supabaseRecordings.map(r => ({
+            id: r.id,
+            reuniaoId: r.reuniao_id,
+            tenantId: r.tenant_id,
+            roomId100ms: r.room_id_100ms,
+            sessionId100ms: r.session_id_100ms,
+            recordingId100ms: r.recording_id_100ms,
+            assetId: r.asset_id,
+            status: r.status,
+            startedAt: r.started_at ? new Date(r.started_at) : null,
+            stoppedAt: r.stopped_at ? new Date(r.stopped_at) : null,
+            duration: r.duration,
+            fileUrl: r.file_url,
+            fileSize: r.file_size,
+            thumbnailUrl: r.thumbnail_url,
+            createdAt: r.created_at ? new Date(r.created_at) : null,
+            reuniao: r.reunioes ? {
+              id: r.reunioes.id,
+              titulo: r.reunioes.titulo,
+              nome: r.reunioes.nome,
+              email: r.reunioes.email,
+              dataInicio: new Date(r.reunioes.data_inicio),
+              dataFim: new Date(r.reunioes.data_fim),
+            } : null
+          }));
+          return res.json(normalizedRecordings);
+        }
+      }
+    } catch (err) {
+      console.warn(`[MEETINGS] Supabase não disponível para listagem de gravações:`, err);
+    }
 
     return res.json(recordings);
   } catch (error) {

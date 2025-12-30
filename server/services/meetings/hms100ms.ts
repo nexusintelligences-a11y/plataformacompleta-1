@@ -264,3 +264,39 @@ export async function obterUrlPresignadaAsset(
     throw error;
   }
 }
+
+export async function obterAssetIdPorRecordingId(
+  recordingId: string,
+  appAccessKey: string,
+  appSecret: string
+): Promise<string | null> {
+  const token = generateManagementToken(appAccessKey, appSecret);
+  try {
+    const response = await axios.get(`${HMS_API_URL}/recordings/${recordingId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data?.asset_id || response.data?.asset?.id || null;
+  } catch (error) {
+    console.error(`[HMS] Erro ao obter assetId por recordingId ${recordingId}:`, error);
+    return null;
+  }
+}
+
+export async function listarAssetsRecentesSala(
+  roomId: string,
+  appAccessKey: string,
+  appSecret: string,
+  limit: number = 5
+): Promise<any[]> {
+  const token = generateManagementToken(appAccessKey, appSecret);
+  try {
+    const response = await axios.get(`${HMS_API_URL}/recording-assets`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { room_id: roomId, limit },
+    });
+    return response.data?.data || [];
+  } catch (error) {
+    console.error(`[HMS] Erro ao listar assets recentes da sala ${roomId}:`, error);
+    return [];
+  }
+}
