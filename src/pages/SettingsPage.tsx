@@ -109,6 +109,14 @@ const SettingsPage = () => {
     setMounted(true);
   }, []);
 
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    toast({
+      title: "Tema atualizado",
+      description: `O tema foi alterado para ${newTheme === 'dark' ? 'Escuro' : 'Claro'}.`,
+    });
+  };
+
   const isDark = mounted && (resolvedTheme ?? theme) === 'dark';
   
   const [profileForm, setProfileForm] = useState({
@@ -1373,7 +1381,7 @@ const SettingsPage = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <PremiumButton
                     variant={theme === 'light' ? 'primary' : 'secondary'}
-                    onClick={() => setTheme('light')}
+                    onClick={() => handleThemeChange('light')}
                     size="lg"
                   >
                     <Sun className="w-5 h-5 mr-2" />
@@ -1381,7 +1389,7 @@ const SettingsPage = () => {
                   </PremiumButton>
                   <PremiumButton
                     variant={theme === 'dark' ? 'primary' : 'secondary'}
-                    onClick={() => setTheme('dark')}
+                    onClick={() => handleThemeChange('dark')}
                     size="lg"
                   >
                     <Moon className="w-5 h-5 mr-2" />

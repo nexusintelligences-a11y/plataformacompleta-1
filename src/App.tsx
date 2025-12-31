@@ -7,18 +7,21 @@ import PlatformRouter from "./platforms/PlatformRouter";
 import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SupabaseConfigProvider } from "@/features/formularios-platform/contexts/SupabaseConfigContext";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <SupabaseConfigProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <PlatformRouter />
-          </BrowserRouter>
-        </TooltipProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <PlatformRouter />
+            </BrowserRouter>
+          </TooltipProvider>
+        </ThemeProvider>
       </SupabaseConfigProvider>
     </AuthProvider>
   </QueryClientProvider>
