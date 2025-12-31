@@ -479,12 +479,30 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-company-name">{brandConfig.companyName}</h1>
-          <p className="text-muted-foreground mt-2">Gerenciador de Contratos para Assinatura</p>
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="border-b p-4 sm:p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-500/10 rounded-md">
+            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Assinatura Digital</h1>
+            <p className="text-sm text-muted-foreground">
+              Plataforma completa de assinatura com reconhecimento facial
+            </p>
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="min-h-screen bg-background py-8 px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-foreground" data-testid="text-company-name">{brandConfig.companyName}</h1>
+              <p className="text-muted-foreground mt-2">Gerenciador de Contratos para Assinatura</p>
+            </div>
 
         {generatedUrl && (
           <Card className="mb-6 border-green-200 bg-green-50">
@@ -1967,6 +1985,8 @@ const Admin = () => {
               {createContractMutation.isPending ? 'Criando...' : 'Criar Contrato'}
             </span>
           </Button>
+        </div>
+      </div>
         </div>
       </div>
     </div>
