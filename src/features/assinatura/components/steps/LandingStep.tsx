@@ -1,7 +1,7 @@
 import { Shield, FileCheck, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useContract } from '@/contexts/ContractContext';
-import { brandConfig, landingConfig } from '@/config/branding';
+import { useContract } from '@/features/assinatura/contexts/ContractContext';
+import { brandConfig, landingConfig } from '@/features/assinatura/config/branding';
 
 const iconMap = {
   0: Shield,

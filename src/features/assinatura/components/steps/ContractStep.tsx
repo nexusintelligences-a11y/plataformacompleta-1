@@ -2,11 +2,11 @@ import { useState, useRef } from 'react';
 import { ArrowLeft, FileText, PenTool, AlertCircle, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useContract } from '@/contexts/ContractContext';
+import { useContract } from '@/features/assinatura/contexts/ContractContext';
 import { useToast } from '@/hooks/use-toast';
 import { generateProtocolNumber, formatDate, maskCPF, maskPhone } from '@/lib/validators';
 import { apiRequest } from '@/lib/queryClient';
-import { brandConfig, contractConfig } from '@/config/branding';
+import { brandConfig, contractConfig } from '@/features/assinatura/config/branding';
 
 interface ClientData {
   id: string;

@@ -9,17 +9,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { brandConfig, contractConfig } from '@/config/branding';
+import { brandConfig, contractConfig } from '@/features/assinatura/config/branding';
 import { FileText, Copy, Check, Plus, Trash2, Clock, CheckCircle2, Users, FileCheck, Gift, AlertCircle, Camera, Shield, Smartphone } from 'lucide-react';
 import { validateCPF, formatCPF, formatPhone } from '@/lib/validators';
-import { VerificationFlow } from '@/components/verification/VerificationFlow';
-import { ProgressTrackerStep } from '@/components/steps/ProgressTrackerStep';
-import { ContractDetailsModal } from '@/components/modals/ContractDetailsModal';
-import type { Contract } from '@shared/schema';
-
+import { VerificationFlow } from '@/features/assinatura/components/verification/VerificationFlow';
+import { ProgressTrackerStep } from '@/features/assinatura/components/steps/ProgressTrackerStep';
+import { ContractDetailsModal } from '@/features/assinatura/components/modals/ContractDetailsModal';
 interface ContractClause {
   title: string;
   content: string;
+}
+
+interface Contract {
+  id: string;
+  client_name: string;
+  client_cpf: string;
+  client_email: string;
+  client_phone: string | null;
+  contract_html: string;
+  protocol_number: string | null;
 }
 
 const Admin = () => {
@@ -1191,7 +1199,7 @@ const Admin = () => {
                         )}
                       </div>
                     ) : (
-                      <div style={{width: '100%', display: 'flex', justifyContent: verificationLogoPosition === 'left' ? 'space-between' : 'center', alignItems: 'flex-start', position: 'relative', paddingX: '16px'}}>
+                      <div style={{width: '100%', display: 'flex', justifyContent: verificationLogoPosition === 'left' ? 'space-between' : 'center', alignItems: 'flex-start', position: 'relative', paddingLeft: '16px', paddingRight: '16px'}}>
                         {verificationLogoPosition === 'left' && verificationLogoUrl && (
                           <div style={{paddingTop: '8px', paddingRight: '32px', flexShrink: 0}}>
                             <img src={verificationLogoUrl} alt="Logo" style={{

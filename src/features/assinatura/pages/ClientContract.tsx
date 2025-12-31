@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ContractProvider, useContract } from '@/contexts/ContractContext';
-import { VerificationFlow } from '@/components/verification/VerificationFlow';
-import { ContractStep } from '@/components/steps/ContractStep';
-import { ResellerWelcomeStep } from '@/components/steps/ResellerWelcomeStep';
-import { AppPromotionStep } from '@/components/steps/AppPromotionStep';
-import { SuccessStep } from '@/components/steps/SuccessStep';
+import { ContractProvider, useContract } from '@/features/assinatura/contexts/ContractContext';
+import { VerificationFlow } from '@/features/assinatura/components/verification/VerificationFlow';
+import { ContractStep } from '@/features/assinatura/components/steps/ContractStep';
+import { ResellerWelcomeStep } from '@/features/assinatura/components/steps/ResellerWelcomeStep';
+import { AppPromotionStep } from '@/features/assinatura/components/steps/AppPromotionStep';
+import { SuccessStep } from '@/features/assinatura/components/steps/SuccessStep';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

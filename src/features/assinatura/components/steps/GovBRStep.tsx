@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { ArrowLeft, Shield, ExternalLink, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useContract } from '@/contexts/ContractContext';
+import { useContract } from '@/features/assinatura/contexts/ContractContext';
 import { useToast } from '@/hooks/use-toast';
-import { govbrConfig } from '@/config/branding';
+import { govbrConfig } from '@/features/assinatura/config/branding';
 import { maskCPF } from '@/lib/validators';
 
 interface ClientData {

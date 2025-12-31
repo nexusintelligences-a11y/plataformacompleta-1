@@ -1,10 +1,9 @@
 import { CheckCircle, Download, Mail, Copy, Home, PenTool, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useContract } from '@/contexts/ContractContext';
+import { useContract } from '@/features/assinatura/contexts/ContractContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/validators';
-import { brandConfig, successConfig } from '@/config/branding';
-import confetti from 'canvas-confetti';
+import { brandConfig, successConfig } from '@/features/assinatura/config/branding';
 import { useEffect } from 'react';
 
 export const SuccessStep = () => {

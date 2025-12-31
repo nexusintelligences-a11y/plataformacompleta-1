@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, User, Mail, Phone, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useContract } from '@/contexts/ContractContext';
+import { useContract } from '@/features/assinatura/contexts/ContractContext';
 import { maskCPF, maskPhone, validateCPF, validateEmail, validatePhone } from '@/lib/validators';
 
 interface ClientData {

@@ -1,10 +1,9 @@
 import { Gift, MapPin, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useContract } from '@/contexts/ContractContext';
+import { useContract } from '@/features/assinatura/contexts/ContractContext';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
-import confetti from 'canvas-confetti';
 
 const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',

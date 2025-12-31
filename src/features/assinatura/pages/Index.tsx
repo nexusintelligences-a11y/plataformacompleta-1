@@ -1,8 +1,8 @@
-import { ContractProvider, useContract } from '@/contexts/ContractContext';
-import { LandingStep } from '@/components/steps/LandingStep';
-import { VerificationFlow } from '@/components/verification/VerificationFlow';
-import { ContractStep } from '@/components/steps/ContractStep';
-import { SuccessStep } from '@/components/steps/SuccessStep';
+import { ContractProvider, useContract } from '@/features/assinatura/contexts/ContractContext';
+import { LandingStep } from '@/features/assinatura/components/steps/LandingStep';
+import { VerificationFlow } from '@/features/assinatura/components/verification/VerificationFlow';
+import { ContractStep } from '@/features/assinatura/components/steps/ContractStep';
+import { SuccessStep } from '@/features/assinatura/components/steps/SuccessStep';
 import { brandConfig } from '@/config/branding';
 
 const ContractFlow = () => {
