@@ -28,6 +28,8 @@ interface Contract {
   client_phone: string | null;
   contract_html: string;
   protocol_number: string | null;
+  status: string | null;
+  access_token: string | null;
 }
 
 const Admin = () => {
@@ -190,7 +192,7 @@ const Admin = () => {
       const response = await apiRequest('POST', '/api/contracts', contractData);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       const url = `${window.location.origin}/c/${data.access_token}`;
       setGeneratedUrl(url);
@@ -405,7 +407,7 @@ const Admin = () => {
       parabens_font_family: parabensFontFamily,
       parabens_form_title: parabensFormTitle,
       parabens_button_text: parabensButtonText,
-    });
+    } as any);
   };
 
   const copyToClipboard = async () => {
@@ -480,20 +482,8 @@ const Admin = () => {
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
-      {/* Header */}
-      <header className="border-b p-4 sm:p-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/10 rounded-md">
-            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Assinatura Digital</h1>
-            <p className="text-sm text-muted-foreground">
-              Plataforma completa de assinatura com reconhecimento facial
-            </p>
-          </div>
-        </div>
-      </header>
+      {/* Header removido pois o DesktopLayout já fornece o HeaderNavigation padrão */}
+
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">

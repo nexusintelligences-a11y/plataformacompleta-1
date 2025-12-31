@@ -5,6 +5,8 @@ import { ContractStep } from '@/features/assinatura/components/steps/ContractSte
 import { SuccessStep } from '@/features/assinatura/components/steps/SuccessStep';
 import { brandConfig } from '@/config/branding';
 
+import DesktopLayout from "@/platforms/desktop/layouts/DesktopLayout";
+
 const ContractFlow = () => {
   const { currentStep } = useContract();
 
@@ -24,22 +26,24 @@ const ContractFlow = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Main Content */}
-      <main>{renderStep()}</main>
+    <DesktopLayout>
+      <div className="min-h-screen bg-background">
+        {/* Main Content */}
+        <main>{renderStep()}</main>
 
-      {/* Footer */}
-      {currentStep === 0 && (
-        <footer className="py-6 px-4 border-t border-border bg-card">
-          <div className="max-w-4xl mx-auto text-center text-sm text-muted-foreground">
-            <p>{brandConfig.footerText}</p>
-            <p className="mt-1">
-              Assinatura digital segura com reconhecimento facial
-            </p>
-          </div>
-        </footer>
-      )}
-    </div>
+        {/* Footer */}
+        {currentStep === 0 && (
+          <footer className="py-6 px-4 border-t border-border bg-card">
+            <div className="max-w-4xl mx-auto text-center text-sm text-muted-foreground">
+              <p>{brandConfig.footerText}</p>
+              <p className="mt-1">
+                Assinatura digital segura com reconhecimento facial
+              </p>
+            </div>
+          </footer>
+        )}
+      </div>
+    </DesktopLayout>
   );
 };
 

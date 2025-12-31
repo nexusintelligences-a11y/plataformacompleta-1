@@ -60,6 +60,8 @@ interface ContractRecord {
   progress_step1_description?: string;
   progress_step2_title?: string;
   progress_step2_description?: string;
+  progress_step3_title?: string;
+  progress_step3_description?: string;
   progress_button_text?: string;
   progress_font_family?: string;
   progress_font_size?: string;
@@ -90,8 +92,8 @@ const ProgressTrackerDisplay = ({
   const progressStep1Description = contract.progress_step1_description || 'Tire uma selfie para validar sua identidade através de reconhecimento facial';
   const progressStep2Title = contract.progress_step2_title || '2. Assinar Contrato';
   const progressStep2Description = contract.progress_step2_description || 'Assine digitalmente o contrato para confirmar seu compromisso';
-  const progressStep3Title = contract.progress_step3_title || '3. Baixar Aplicativo';
-  const progressStep3Description = contract.progress_step3_description || 'Baixe o app oficial para ativar sua loja e receber sua maleta';
+  const progressStep3Title = (contract as any).progress_step3_title || '3. Baixar Aplicativo';
+  const progressStep3Description = (contract as any).progress_step3_description || 'Baixe o app oficial para ativar sua loja e receber sua maleta';
   const progressButtonText = contract.progress_button_text || 'Complete os passos acima';
   const progressCardColor = contract.progress_card_color || '#dbeafe';
   const progressButtonColor = contract.progress_button_color || '#22c55e';
@@ -290,6 +292,8 @@ const ProgressTrackerDisplay = ({
   );
 };
 
+import DesktopLayout from "@/platforms/desktop/layouts/DesktopLayout";
+
 const ClientContractFlow = ({ contract }: { contract: ContractRecord }) => {
   const { currentStep, setCurrentStep, setContractData } = useContract();
   const [facialVerified, setFacialVerified] = useState(false);
@@ -299,13 +303,11 @@ const ClientContractFlow = ({ contract }: { contract: ContractRecord }) => {
   const [documentPhoto, setDocumentPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    setContractData({
-      id: contract.id,
-      protocol_number: contract.protocol_number || undefined,
-      contract_html: contract.contract_html,
-      app_store_url: contract.app_store_url,
-      google_play_url: contract.google_play_url,
-    });
+      setContractData({
+        id: contract.id,
+        protocol_number: contract.protocol_number || undefined,
+        contract_html: contract.contract_html,
+      } as any);
     // Client always starts at verification step (Step 1)
     // Data is always pre-filled from database by admin
     setCurrentStep(1);
@@ -458,18 +460,20 @@ const ClientContractFlow = ({ contract }: { contract: ContractRecord }) => {
   const progressStep1Description = contract.progress_step1_description || 'Tire uma selfie para validar sua identidade através de reconhecimento facial';
   const progressStep2Title = contract.progress_step2_title || '2. Assinar Contrato';
   const progressStep2Description = contract.progress_step2_description || 'Assine digitalmente o contrato para confirmar seu compromisso';
-  const progressStep3Title = contract.progress_step3_title || '3. Baixar Aplicativo';
-  const progressStep3Description = contract.progress_step3_description || 'Baixe o app oficial para ativar sua loja e receber sua maleta';
+  const progressStep3Title = (contract as any).progress_step3_title || '3. Baixar Aplicativo';
+  const progressStep3Description = (contract as any).progress_step3_description || 'Baixe o app oficial para ativar sua loja e receber sua maleta';
   const progressButtonText = contract.progress_button_text || 'Complete os passos acima';
   const progressFontFamily = contract.progress_font_family || 'Arial, sans-serif';
   const progressFontSize = contract.progress_font_size || '16px';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <main className="flex-1 overflow-y-auto">{renderStep()}</main>
-      {/* Floating Progress Tracker */}
-      <ProgressTrackerDisplay currentStep={currentStep} contract={contract} />
-    </div>
+    <DesktopLayout>
+      <div className="min-h-screen bg-background flex flex-col">
+        <main className="flex-1 overflow-y-auto">{renderStep()}</main>
+        {/* Floating Progress Tracker */}
+        <ProgressTrackerDisplay currentStep={currentStep} contract={contract} />
+      </div>
+    </DesktopLayout>
   );
 };
 
