@@ -415,13 +415,17 @@ const Admin = () => {
       await navigator.clipboard.writeText(generatedUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({ title: 'Copiado!', description: 'URL copiada para a area de transferencia.' });
+      toast({ title: 'Copiado!', description: 'URL copiada para a área de transferência.' });
     }
   };
 
   const resetForm = () => {
     setClientName('');
     setClientCpf('');
+    setClientEmail('');
+    setClientPhone('');
+    setGeneratedUrl(null);
+  };
     setClientEmail('');
     setClientPhone('');
     setContractTitle(contractConfig.title);
