@@ -7,7 +7,7 @@
 import { lazy, Suspense } from 'react';
 
 // Lazy load the complete Assinatura app from features
-const AssinatureApp = lazy(() => import('@/features/assinatura/pages/Admin'));
+const AssinatureApp = lazy(() => import('@/features/assinatura/pages/Admin') as any);
 
 export default function AssinaturaDashboard() {
   return (
