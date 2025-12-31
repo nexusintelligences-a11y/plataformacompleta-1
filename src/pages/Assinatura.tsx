@@ -37,24 +37,9 @@ export default function AssinaturaPrincipal() {
   ];
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
-      {/* Header */}
-      <header className="border-b p-4 sm:p-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/10 rounded-md">
-            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Assinatura Digital</h1>
-            <p className="text-sm text-muted-foreground">
-              Plataforma completa de assinatura com reconhecimento facial
-            </p>
-          </div>
-        </div>
-      </header>
-
+    <div className="flex-1 flex flex-col">
       {/* Tabs */}
-      <div className="border-b px-4 sm:px-6 flex gap-2">
+      <div className="border-b px-4 sm:px-6 flex gap-2 pb-2">
         <Button
           variant={view === 'dashboard' ? 'default' : 'ghost'}
           onClick={() => setView('dashboard')}

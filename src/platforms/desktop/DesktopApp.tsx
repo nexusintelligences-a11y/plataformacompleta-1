@@ -498,7 +498,9 @@ const DesktopApp = () => {
         path="/assinatura/*" 
         element={
           <ProtectedRoute>
-            <AssinaturaDashboard />
+            <DesktopLayout>
+              <AssinaturaDashboard />
+            </DesktopLayout>
           </ProtectedRoute>
         } 
       />
