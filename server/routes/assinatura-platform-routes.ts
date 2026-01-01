@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../storage/assinatura-storage";
-import { insertContractSchema, insertContractPartialSchema, insertSignatureLogSchema, insertUserSchema, insertAuditTrailSchema } from "../../shared/schema.ts";
+import { insertContractSchema, insertContractPartialSchema, insertSignatureLogSchema, insertUserSchema, insertAuditTrailSchema } from "../../shared/db-schema";
 import { z } from "zod";
 import { getSupabaseClient } from "../lib/supabaseClient";
 
