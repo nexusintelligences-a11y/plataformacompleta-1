@@ -428,6 +428,10 @@ export const assinatura_users = pgTable("assinatura_users", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// Aliases for backward compatibility
+export const signature_logs = assinatura_signature_logs;
+export const audit_trail = assinatura_audit_trail;
+
 export const assinatura_signature_logs = pgTable("assinatura_signature_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
   contract_id: uuid("contract_id").references(() => assinatura_contracts.id, { onDelete: "cascade" }),
@@ -452,11 +456,8 @@ export const assinatura_audit_trail = pgTable("assinatura_audit_trail", {
   timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow(),
 }, (table) => ({
   contractIdIdx: index("idx_assinatura_audit_contract_id").on(table.contract_id),
+  createdAtIdx: index("idx_assinatura_audit_created_at").on(table.timestamp.desc()),
 }));
-
-// Aliases for backward compatibility
-export const signature_logs = assinatura_signature_logs;
-export const audit_trail = assinatura_audit_trail;
 
 export const assinatura_contracts = pgTable("assinatura_contracts", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -530,32 +531,6 @@ export const assinatura_contracts = pgTable("assinatura_contracts", {
   statusIdx: index("idx_assinatura_contracts_status").on(table.status),
   createdAtIdx: index("idx_assinatura_contracts_created_at").on(table.created_at.desc()),
 }));
-
-export const assinatura_signature_logs = pgTable("assinatura_signature_logs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  contract_id: uuid("contract_id").references(() => assinatura_contracts.id, { onDelete: "cascade" }),
-  ip_address: varchar("ip_address", { length: 45 }).notNull(),
-  user_agent: text("user_agent"),
-  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
-  govbr_token_hash: varchar("govbr_token_hash", { length: 255 }),
-  govbr_auth_time: timestamp("govbr_auth_time", { withTimezone: true }),
-  signature_valid: boolean("signature_valid").default(true),
-  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  contractIdIdx: index("idx_assinatura_sig_logs_contract_id").on(table.contract_id),
-  createdAtIdx: index("idx_assinatura_sig_logs_created_at").on(table.created_at.desc()),
-}));
-
-export const assinatura_audit_trail = pgTable("assinatura_audit_trail", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  contract_id: uuid("contract_id").references(() => assinatura_contracts.id, { onDelete: "cascade" }),
-  action: varchar("action", { length: 100 }).notNull(),
-  user_id: uuid("user_id").references(() => assinatura_users.id),
-  metadata: jsonb("metadata"),
-  timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  contractIdIdx: index("idx_assinatura_audit_contract_id").on(table.contract_id),
-  createdAtIdx: index("idx_assinatura_audit_created_at").on(table.timestamp.desc()),
 }));
 
 // Schemas for assinatura
