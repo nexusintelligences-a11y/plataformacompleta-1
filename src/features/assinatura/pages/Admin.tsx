@@ -202,10 +202,11 @@ const Admin = () => {
         description: 'URL gerada com sucesso. Copie e envie ao cliente.',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("❌ ERRO AO CRIAR CONTRATO:", error);
       toast({
         title: 'Erro',
-        description: 'Nao foi possivel criar o contrato. Tente novamente.',
+        description: error.message || 'Não foi possível criar o contrato. Verifique os dados e tente novamente.',
         variant: 'destructive',
       });
     },
@@ -407,26 +408,49 @@ const Admin = () => {
       contract_html: contractHTML,
       protocol_number: protocolNumber,
       status: 'pending',
-      appearance_configs: appearanceConfigs,
-      verification_configs: verificationConfigs,
-      contract_configs: contractConfigs,
-      progress_tracker_configs: progressTrackerConfigs,
-      reseller_welcome_configs: {
-        title: parabensTitle,
-        subtitle: parabensSubtitle,
-        description: parabensDescription,
-        cardColor: parabensCardColor,
-        backgroundColor: parabensBackgroundColor,
-        buttonColor: parabensButtonColor,
-        textColor: parabensTextColor,
-        fontFamily: parabensFontFamily,
-        formTitle: parabensFormTitle,
-        buttonText: parabensButtonText
-      },
-      app_promotion_configs: {
-        appStoreUrl,
-        googlePlayUrl
-      }
+      logo_url: logoUrl || null,
+      logo_size: logoSize,
+      logo_position: logoPosition,
+      primary_color: primaryColor,
+      text_color: textColor,
+      font_family: fontFamily,
+      font_size: fontSize,
+      company_name: companyName,
+      footer_text: footerText,
+      maleta_card_color: maletaCardColor,
+      maleta_button_color: maletaButtonColor,
+      maleta_text_color: maletaTextColor,
+      verification_primary_color: verificationPrimaryColor,
+      verification_text_color: verificationTextColor,
+      verification_font_family: verificationFontFamily,
+      verification_font_size: verificationFontSize,
+      verification_logo_url: verificationLogoUrl || null,
+      verification_logo_size: verificationLogoSize,
+      verification_logo_position: verificationLogoPosition,
+      verification_footer_text: verificationFooterText,
+      verification_background_image: verificationBackgroundImage || null,
+      verification_icon_url: null,
+      verification_welcome_text: verificationWelcomeText,
+      verification_instructions: verificationInstructions,
+      verification_security_message: verificationSecurityText,
+      verification_background_color: verificationBackgroundColor,
+      verification_header_background_color: verificationHeaderBackgroundColor,
+      verification_header_logo_url: verificationHeaderLogoUrl || null,
+      verification_header_company_name: verificationHeaderCompanyName,
+      progress_card_color: progressCardColor,
+      progress_button_color: progressButtonColor,
+      progress_text_color: progressTextColor,
+      progress_title: progressTitle,
+      progress_subtitle: progressSubtitle,
+      progress_step1_title: progressStep1Title,
+      progress_step1_description: progressStep1Description,
+      progress_step2_title: progressStep2Title,
+      progress_step2_description: progressStep2Description,
+      progress_button_text: progressButtonText,
+      progress_font_family: progressFontFamily,
+      progress_font_size: progressFontSize,
+      app_store_url: appStoreUrl || null,
+      google_play_url: googlePlayUrl || null,
     } as any);
   };
 

@@ -19,16 +19,23 @@ export const storage = {
   },
 
   async createContract(data: any) {
-    const id = uuidv4();
-    const accessToken = uuidv4();
-    const [contract] = await db.insert(contracts).values({
-      ...data,
-      id,
-      access_token: accessToken,
-      status: data.status || 'pending',
-      created_at: new Date(),
-    }).returning();
-    return contract;
+    try {
+      console.log("💾 Inserindo contrato no banco:", JSON.stringify(data, null, 2));
+      const id = uuidv4();
+      const accessToken = uuidv4();
+      const [contract] = await db.insert(contracts).values({
+        ...data,
+        id,
+        access_token: accessToken,
+        status: data.status || 'pending',
+        created_at: new Date(),
+      }).returning();
+      console.log("✅ Contrato inserido com sucesso:", contract.id);
+      return contract;
+    } catch (error) {
+      console.error("❌ Erro na inserção do contrato:", error);
+      throw error;
+    }
   },
 
   async updateContract(id: string, data: any) {

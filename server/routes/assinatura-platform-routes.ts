@@ -118,16 +118,42 @@ export function registerRoutes(app: Express): void {
   });
 
   app.post("/api/contracts", async (req, res) => {
+    console.log("=".repeat(80));
+    console.log("🔍 RECEBENDO REQUISIÇÃO DE CRIAÇÃO DE CONTRATO");
+    console.log("📥 Body recebido:", JSON.stringify(req.body, null, 2));
+    console.log("=".repeat(80));
+    
     try {
       const validatedData = insertContractSchema.parse(req.body);
+      console.log("✅ Dados validados com sucesso:", validatedData);
+      
       const contract = await storage.createContract(validatedData);
+      console.log("✅ Contrato criado no banco:", contract);
+      
       res.status(201).json(contract);
     } catch (error) {
+      console.error("=".repeat(80));
+      console.error("❌ ERRO AO CRIAR CONTRATO:");
+      
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
+        console.error("🔴 Erros de Validação Zod:", JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ 
+          error: "Dados inválidos", 
+          details: error.errors 
+        });
       }
-      console.error("Error creating contract:", error);
-      res.status(500).json({ error: "Internal server error" });
+      
+      if (error instanceof Error) {
+        console.error("Tipo:", error.constructor.name);
+        console.error("Mensagem:", error.message);
+        console.error("Stack:", error.stack);
+      }
+      
+      console.error("=".repeat(80));
+      res.status(500).json({ 
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

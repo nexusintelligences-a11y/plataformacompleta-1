@@ -1,0 +1,529 @@
+# Guia Completo de Correção: Erro ao Criar Contrato no Replit
+
+Este documento consolida todas as informações técnicas necessárias para diagnosticar e corrigir o erro de criação de contratos na plataforma.
+
+---
+
+## 🎯 ETAPA 1: DIAGNÓSTICO INICIAL
+
+### 1.1 Capturar o Erro Real
+Antes de qualquer correção, precisamos ver o erro exato. Adicione logs detalhados:
+
+**No Frontend (`client/src/components/admin/ContractForm.tsx` ou similar):**
+```typescript
+const handleSubmit = async (data) => {
+  console.log("📤 DADOS ENVIADOS:", JSON.stringify(data, null, 2));
+  
+  try {
+    const response = await fetch("/api/contracts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    
+    console.log("📊 STATUS RESPOSTA:", response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("❌ ERRO DO SERVIDOR:", errorData);
+      throw new Error(errorData.error || "Erro desconhecido");
+    }
+    
+    const result = await response.json();
+    console.log("✅ CONTRATO CRIADO:", result);
+    
+  } catch (error) {
+    console.error("❌ ERRO CAPTURADO:", error);
+    alert(`Erro: ${error.message}`);
+  }
+};
+```
+
+**No Backend (`server/routes.ts`):**
+```typescript
+app.post("/api/contracts", async (req, res) => {
+  console.log("=" .repeat(80));
+  console.log("🔍 RECEBENDO REQUISIÇÃO DE CRIAÇÃO DE CONTRATO");
+  console.log("📥 Body recebido:", JSON.stringify(req.body, null, 2));
+  console.log("=" .repeat(80));
+  
+  try {
+    // Validação com Zod
+    const validatedData = insertContractSchema.parse(req.body);
+    console.log("✅ Dados validados com sucesso:", validatedData);
+    
+    // Criação no banco
+    const contract = await storage.createContract(validatedData);
+    console.log("✅ Contrato criado no banco:", contract);
+    
+    res.status(201).json(contract);
+    
+  } catch (error) {
+    console.error("=" .repeat(80));
+    console.error("❌ ERRO AO CRIAR CONTRATO:");
+    console.error("Tipo:", error.constructor.name);
+    console.error("Mensagem:", error.message);
+    console.error("Stack:", error.stack);
+    
+    if (error.name === 'ZodError') {
+      console.error("🔴 Erros de Validação Zod:", JSON.stringify(error.errors, null, 2));
+      return res.status(400).json({ 
+        error: "Dados inválidos", 
+        details: error.errors 
+      });
+    }
+    
+    console.error("=" .repeat(80));
+    res.status(500).json({ 
+      error: "Erro interno do servidor",
+      message: error.message,
+      type: error.constructor.name
+    });
+  }
+});
+```
+
+### 1.2 Executar Teste
+1. Abra o console do navegador (F12)
+2. Tente criar um contrato
+3. Copie TODOS os logs que aparecerem (frontend e backend)
+4. Anote o **status code** da resposta (400, 500, etc)
+
+---
+
+## 🔧 ETAPA 2: VERIFICAÇÃO DO SCHEMA ZOD
+
+### 2.1 Schema Completo Esperado
+Verifique se o arquivo `shared/schema.ts` tem exatamente isto:
+
+```typescript
+import { z } from "zod";
+
+// Schema de validação para inserção de contrato
+export const insertContractSchema = z.object({
+  // Campos obrigatórios do cliente
+  client_name: z.string().min(1, "Nome é obrigatório"),
+  client_cpf: z.string()
+    .min(11, "CPF deve ter 11 dígitos")
+    .regex(/^\d{11}$/, "CPF deve conter apenas números"),
+  client_email: z.string()
+    .email("Email inválido"),
+  
+  // Campos opcionais de contato
+  client_phone: z.string().optional(),
+  client_address: z.string().optional(),
+  client_city: z.string().optional(),
+  client_state: z.string().optional(),
+  client_zip: z.string().optional(),
+  
+  // Conteúdo do contrato
+  contract_html: z.string().min(1, "Conteúdo do contrato é obrigatório"),
+  
+  // Campos de personalização (opcionais)
+  logo_url: z.string().url().optional().or(z.literal("")),
+  primary_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  text_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+  font_family: z.string().optional(),
+  company_name: z.string().optional(),
+  footer_text: z.string().optional(),
+  
+  // Configurações de verificação
+  verification_instructions: z.string().optional(),
+  security_message: z.string().optional(),
+  header_background_color: z.string().optional(),
+  
+  // Tracker de progresso
+  progress_step1_text: z.string().optional(),
+  progress_step2_text: z.string().optional(),
+  progress_step3_text: z.string().optional(),
+  progress_step4_text: z.string().optional(),
+  
+  // Tela de sucesso
+  success_title: z.string().optional(),
+  success_message: z.string().optional(),
+  success_button_text: z.string().optional(),
+  
+  // Links de apps
+  app_store_url: z.string().url().optional().or(z.literal("")),
+  play_store_url: z.string().url().optional().or(z.literal("")),
+});
+
+export type InsertContract = z.infer<typeof insertContractSchema>;
+```
+
+### 2.2 Validação de CPF
+Se o frontend envia CPF formatado (000.000.000-00), adicione tratamento:
+
+```typescript
+// No frontend, antes de enviar:
+const cleanCPF = (cpf: string) => cpf.replace(/\D/g, '');
+
+const submitData = {
+  ...formData,
+  client_cpf: cleanCPF(formData.client_cpf)
+};
+```
+
+---
+
+## 🗄️ ETAPA 3: VERIFICAÇÃO DO BANCO DE DADOS
+
+### 3.1 Schema SQL Completo
+Execute este SQL no PostgreSQL do Replit para garantir todas as colunas:
+
+```sql
+-- Verifica se a tabela existe
+SELECT table_name FROM information_schema.tables 
+WHERE table_schema = 'public' AND table_name = 'contracts';
+
+-- Cria ou atualiza a tabela com TODAS as colunas necessárias
+CREATE TABLE IF NOT EXISTS contracts (
+  id SERIAL PRIMARY KEY,
+  
+  -- Identificação
+  access_token UUID DEFAULT gen_random_uuid() UNIQUE NOT NULL,
+  
+  -- Dados do cliente (OBRIGATÓRIOS)
+  client_name VARCHAR(255) NOT NULL,
+  client_cpf VARCHAR(20) NOT NULL,
+  client_email VARCHAR(255) NOT NULL,
+  
+  -- Dados de contato (OPCIONAIS)
+  client_phone VARCHAR(20),
+  client_address TEXT,
+  client_city VARCHAR(100),
+  client_state VARCHAR(2),
+  client_zip VARCHAR(10),
+  
+  -- Conteúdo
+  contract_html TEXT NOT NULL,
+  
+  -- Status e datas
+  status VARCHAR(50) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  signed_at TIMESTAMP,
+  
+  -- Verificação facial
+  verification_selfie TEXT,
+  verification_document TEXT,
+  face_match_score DECIMAL(5,2),
+  
+  -- Personalização - Aparência
+  logo_url TEXT,
+  primary_color VARCHAR(7) DEFAULT '#3B82F6',
+  text_color VARCHAR(7) DEFAULT '#1F2937',
+  font_family VARCHAR(100) DEFAULT 'Inter',
+  company_name VARCHAR(255),
+  footer_text TEXT,
+  
+  -- Personalização - Verificação
+  verification_instructions TEXT,
+  security_message TEXT,
+  header_background_color VARCHAR(7),
+  
+  -- Personalização - Tracker
+  progress_step1_text VARCHAR(255),
+  progress_step2_text VARCHAR(255),
+  progress_step3_text VARCHAR(255),
+  progress_step4_text VARCHAR(255),
+  
+  -- Personalização - Sucesso
+  success_title VARCHAR(255),
+  success_message TEXT,
+  success_button_text VARCHAR(100),
+  
+  -- Links de apps
+  app_store_url TEXT,
+  play_store_url TEXT,
+  
+  -- Gov.br
+  govbr_token_hash VARCHAR(255),
+  govbr_cpf VARCHAR(20),
+  govbr_validated BOOLEAN DEFAULT false
+);
+
+-- Adiciona colunas que podem estar faltando (se a tabela já existe)
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS access_token UUID DEFAULT gen_random_uuid() UNIQUE;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS primary_color VARCHAR(7) DEFAULT '#3B82F6';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS text_color VARCHAR(7) DEFAULT '#1F2937';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS font_family VARCHAR(100) DEFAULT 'Inter';
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS footer_text TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS verification_instructions TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS security_message TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS header_background_color VARCHAR(7);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS progress_step1_text VARCHAR(255);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS progress_step2_text VARCHAR(255);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS progress_step3_text VARCHAR(255);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS progress_step4_text VARCHAR(255);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS success_title VARCHAR(255);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS success_message TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS success_button_text VARCHAR(100);
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS app_store_url TEXT;
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS play_store_url TEXT;
+
+-- Verifica as colunas criadas
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 'contracts'
+ORDER BY ordinal_position;
+```
+
+### 3.2 Sincronização via Drizzle
+Alternativamente, force a sincronização:
+
+```bash
+npm run db:push --force
+```
+
+⚠️ **ATENÇÃO**: Isso pode sobrescrever o schema. Faça backup antes!
+
+---
+
+## 💾 ETAPA 4: VERIFICAÇÃO DO STORAGE
+
+### 4.1 Implementação Correta do createContract
+Verifique o arquivo `server/storage.ts` ou `server/db.ts`:
+
+```typescript
+import { db } from "./db";
+import { contracts, type InsertContract } from "@db/schema";
+
+export async function createContract(data: InsertContract) {
+  try {
+    console.log("💾 Inserindo no banco:", data);
+    
+    const [newContract] = await db
+      .insert(contracts)
+      .values(data)
+      .returning();
+    
+    console.log("✅ Contrato inserido com ID:", newContract.id);
+    return newContract;
+    
+  } catch (error) {
+    console.error("❌ Erro ao inserir no banco:", error);
+    throw new Error(`Falha na inserção: ${error.message}`);
+  }
+}
+```
+
+### 4.2 Teste Direto no Banco
+Para testar se o banco aceita inserções, execute:
+
+```sql
+INSERT INTO contracts (
+  client_name, 
+  client_cpf, 
+  client_email, 
+  contract_html
+) VALUES (
+  'Teste Manual',
+  '12345678901',
+  'teste@email.com',
+  '<h1>Contrato de Teste</h1>'
+) RETURNING *;
+```
+
+Se isso falhar, o problema está no schema do banco.
+
+---
+
+## 🌐 ETAPA 5: CONFIGURAÇÕES DE AMBIENTE
+
+### 5.1 Variáveis Obrigatórias
+Verifique no Replit (Secrets/Environment):
+
+```bash
+# Database
+DATABASE_URL=postgresql://usuario:senha@host:porta/database
+
+# Supabase (se usado)
+REACT_APP_SUPABASE_URL=https://xxx.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJxxx...
+
+# Session
+SESSION_SECRET=seu_secret_aqui_minimo_32_caracteres
+```
+
+### 5.2 Teste de Conexão
+Adicione este endpoint temporário:
+
+```typescript
+app.get("/api/health", async (req, res) => {
+  try {
+    // Testa conexão com o banco
+    const result = await db.execute(sql`SELECT NOW()`);
+    
+    res.json({
+      status: "ok",
+      database: "connected",
+      timestamp: result.rows[0].now
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      database: "disconnected",
+      error: error.message
+    });
+  }
+});
+```
+
+Acesse: `https://seu-replit.repl.co/api/health`
+
+---
+
+## 🔍 ETAPA 6: DEBUGGING AVANÇADO
+
+### 6.1 Checklist de Verificação
+
+```
+[ ] Frontend: Logs mostram dados corretos sendo enviados?
+[ ] Frontend: CPF está sem máscara (apenas números)?
+[ ] Frontend: Email tem formato válido?
+[ ] Backend: Endpoint /api/contracts existe e responde?
+[ ] Backend: insertContractSchema valida os dados?
+[ ] Backend: Erro é 400 (validação) ou 500 (servidor)?
+[ ] Banco: Tabela contracts existe?
+[ ] Banco: Todas as colunas existem (query SELECT column_name)?
+[ ] Banco: DATABASE_URL está correta?
+[ ] Banco: Inserção manual funciona?
+[ ] Vite: Proxy está configurado (allowedHosts: true)?
+[ ] CORS: Middleware cors() está ativo?
+```
+
+### 6.2 Teste Isolado
+Crie um endpoint de teste simplificado:
+
+```typescript
+app.post("/api/test-insert", async (req, res) => {
+  try {
+    const testData = {
+      client_name: "Teste Sistema",
+      client_cpf: "12345678901",
+      client_email: "teste@sistema.com",
+      contract_html: "<h1>Teste</h1>"
+    };
+    
+    const result = await db
+      .insert(contracts)
+      .values(testData)
+      .returning();
+    
+    res.json({ success: true, contract: result[0] });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+```
+
+Se este endpoint funcionar, o problema está na validação ou nos dados enviados.
+
+---
+
+## 🚨 ETAPA 7: ERROS COMUNS E SOLUÇÕES
+
+### Erro: "CPF deve conter apenas números"
+**Causa**: Frontend enviando CPF formatado (000.000.000-00)
+**Solução**: 
+```typescript
+client_cpf: formData.client_cpf.replace(/\D/g, '')
+```
+
+### Erro: "column 'xxx' does not exist"
+**Causa**: Schema do banco desatualizado
+**Solução**: Execute os ALTER TABLE do passo 3.1
+
+### Erro: "cannot insert NULL into column"
+**Causa**: Campo obrigatório não está sendo enviado
+**Solução**: Verifique se o frontend envia todos campos obrigatórios (name, cpf, email, contract_html)
+
+### Erro: "relation 'contracts' does not exist"
+**Causa**: Tabela não foi criada
+**Solução**: Execute o CREATE TABLE do passo 3.1
+
+### Erro: "CORS policy blocked"
+**Causa**: Backend não aceita requisições do frontend
+**Solução**: Adicione no `server/index.ts`:
+```typescript
+import cors from "cors";
+app.use(cors());
+```
+
+### Erro: "Invalid host header"
+**Causa**: Vite bloqueando proxy no Replit
+**Solução**: No `vite.config.ts`:
+```typescript
+server: {
+  host: '0.0.0.0',
+  allowedHosts: true
+}
+```
+
+---
+
+## 📋 ETAPA 8: CHECKLIST FINAL
+
+Após aplicar as correções:
+
+1. ✅ Reinicie o servidor (`Ctrl+C` e `npm run dev`)
+2. ✅ Limpe o cache do navegador (Ctrl+Shift+Delete)
+3. ✅ Abra o console (F12) antes de testar
+4. ✅ Tente criar um contrato simples
+5. ✅ Verifique os logs do terminal e do console
+6. ✅ Se funcionar, teste com dados completos
+7. ✅ Verifique se o contrato aparece no banco:
+   ```sql
+   SELECT * FROM contracts ORDER BY created_at DESC LIMIT 5;
+   ```
+
+---
+
+## 🆘 PRÓXIMOS PASSOS SE AINDA NÃO FUNCIONAR
+
+Se após seguir TODOS os passos o erro persistir, forneça:
+
+1. **Logs completos** do terminal do servidor
+2. **Logs completos** do console do navegador (F12)
+3. **Status code** da resposta HTTP
+4. **Schema atual** do banco:
+   ```sql
+   \d contracts
+   ```
+5. **Dados exatos** que estão sendo enviados (copie do console)
+
+Com essas informações, podemos identificar o problema exato.
+
+---
+
+## 📚 REFERÊNCIAS RÁPIDAS
+
+### Comandos Úteis
+```bash
+# Reiniciar servidor
+npm run dev
+
+# Sincronizar schema do banco
+npm run db:push
+
+# Acessar console do PostgreSQL (se disponível)
+psql $DATABASE_URL
+```
+
+### Arquivos Críticos
+- `shared/schema.ts` - Validação Zod e tipos
+- `server/routes.ts` - Endpoint de criação
+- `server/storage.ts` - Lógica de banco
+- `client/src/components/admin/ContractForm.tsx` - Formulário
+- `vite.config.ts` - Configuração do proxy
+
+---
+
+**Última atualização**: Janeiro 2026
+**Versão do documento**: 2.0 - Completo e Detalhado
