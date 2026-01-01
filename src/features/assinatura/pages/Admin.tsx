@@ -344,7 +344,7 @@ const Admin = () => {
     }
 
     const contractHTML = generateContractHTML();
-    const protocolNumber = `CONT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const protocolNumber = `ASSIN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
     createContractMutation.mutate({
       client_name: clientName.trim(),
@@ -431,6 +431,8 @@ const Admin = () => {
     switch (status) {
       case 'signed':
         return <Badge variant="default" className="bg-green-600"><CheckCircle2 className="w-3 h-3 mr-1" />Assinado</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive" className="bg-red-600"><AlertCircle className="w-3 h-3 mr-1" />Recusado</Badge>;
       case 'pending':
       default:
         return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pendente</Badge>;

@@ -119,6 +119,11 @@ export const VerificationFlow = ({
 
     try {
       console.log('Starting advanced face comparison...');
+      // Implement verification quality checks before processing
+      if (selfieImage.length < 5000 || documentImage.length < 5000) {
+        throw new Error('Qualidade de captura insuficiente. Por favor, tente novamente com melhor iluminação.');
+      }
+
       const result = await compareFacesAdvanced(selfieImage, documentImage);
       
       const verificationResult: VerificationResult = {

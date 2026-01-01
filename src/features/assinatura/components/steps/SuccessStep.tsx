@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/validators';
 import { brandConfig, successConfig } from '@/features/assinatura/config/branding';
 import { useEffect } from 'react';
+import confetti from 'canvas-confetti';
 
 export const SuccessStep = () => {
   const { govbrData, contractData, resetFlow } = useContract();
