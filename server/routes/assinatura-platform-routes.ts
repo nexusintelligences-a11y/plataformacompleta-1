@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage/assinatura-storage";
 import { insertContractSchema, insertContractPartialSchema, insertSignatureLogSchema, insertUserSchema, insertAuditTrailSchema } from "../../shared/schema.ts";
 import { z } from "zod";
+import { getSupabaseClient } from "../lib/supabaseClient";
 
 /**
  * API ROUTES - EXPRESS SERVER
@@ -39,22 +40,36 @@ export function registerRoutes(app: Express): void {
    * Debug:
    * curl http://localhost:5000/api/config/supabase
    */
-  app.get("/api/config/supabase", (_req, res) => {
-    // Tenta ambas variáveis (REACT_APP_* e VITE_*)
-    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-    const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-    
-    if (supabaseUrl && supabaseKey) {
+  app.get("/api/config/supabase", async (_req, res) => {
+    try {
+      // 🔐 Prioridade: Banco de dados via getSupabaseClient (que já resolve multi-tenant/fallback)
+      const supabase = await getSupabaseClient();
+      
+      if (supabase) {
+        // @ts-ignore - Acessando propriedades privadas do cliente para retornar ao frontend
+        const supabaseUrl = supabase.supabaseUrl;
+        // @ts-ignore
+        const supabaseKey = supabase.supabaseKey;
+
+        if (supabaseUrl && supabaseKey) {
+          return res.json({
+            url: supabaseUrl,
+            key: supabaseKey
+          });
+        }
+      }
+
+      // Fallback para env vars se o banco falhar
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+      
       res.json({
         url: supabaseUrl,
         key: supabaseKey
       });
-    } else {
-      // Retorna vazio se não houver credentials (client usará mock mode)
-      res.json({
-        url: '',
-        key: ''
-      });
+    } catch (error) {
+      console.error("Erro ao carregar config Supabase para plataforma:", error);
+      res.json({ url: '', key: '' });
     }
   });
 
