@@ -154,7 +154,7 @@ export async function getSupabaseCredentials(tenantId: string): Promise<Supabase
 
   // 1. First try with provided tenantId
   try {
-    console.log(`🔍 [SUPABASE] Buscando credenciais do banco de dados (supabase_config)...`);
+    console.log(`🔍 [SUPABASE] Buscando credenciais do banco de dados (supabase_config) para tenant: ${tenantId}...`);
     const configs = await db.select()
       .from(supabaseConfig)
       .where(eq(supabaseConfig.tenantId, tenantId))
@@ -172,7 +172,26 @@ export async function getSupabaseCredentials(tenantId: string): Promise<Supabase
     console.warn(`⚠️ [SUPABASE] Erro ao buscar credenciais para tenant ${tenantId}:`, error);
   }
   
-  // 2. Fallback to 'system' tenant (used when credentials come from Secrets at startup)
+  // 2. Fallback to any configured tenant if none specific found
+  try {
+    console.log('🔄 [SUPABASE] Tentando fallback para qualquer tenant configurado...');
+    const anyConfigs = await db.select()
+      .from(supabaseConfig)
+      .limit(1)
+      .execute();
+    
+    if (anyConfigs.length > 0) {
+      const result = decryptConfig(anyConfigs[0]);
+      if (result) {
+        console.log(`✅ [SUPABASE] Usando credenciais do tenant: ${anyConfigs[0].tenantId} (fallback)`);
+        return result;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ [SUPABASE] Erro ao buscar credenciais de fallback:', error);
+  }
+
+  // 3. Fallback to 'system' tenant
   if (tenantId !== 'system') {
     try {
       console.log('🔄 [SUPABASE] Tentando fallback para tenant system...');
@@ -194,15 +213,14 @@ export async function getSupabaseCredentials(tenantId: string): Promise<Supabase
     }
   }
   
-  // 3. Fallback: environment variables (Secrets)
+  // 4. Fallback: environment variables (Secrets)
   const envCredentials = await getSupabaseCredentialsFromEnv();
   if (envCredentials) {
     console.log('✅ [SUPABASE] Usando credenciais dos Secrets (fallback)');
     return envCredentials;
   }
   
-  // 4. Final fallback: file-based config (data/supabase-config.json)
-  // This is set when user configures Supabase via /configuracoes UI
+  // 5. Final fallback: file-based config (data/supabase-config.json)
   try {
     const { getEffectiveSupabaseConfig } = await import('./supabaseFileConfig.js');
     const fileConfig = getEffectiveSupabaseConfig();
@@ -219,7 +237,6 @@ export async function getSupabaseCredentials(tenantId: string): Promise<Supabase
   }
   
   console.error(`❌ [SUPABASE] Credenciais não encontradas para tenant ${tenantId}`);
-  console.error('❌ [SUPABASE] Nem no banco (tenant específico), nem em system, nem nos Secrets, nem no arquivo de config');
   return null;
 }
 

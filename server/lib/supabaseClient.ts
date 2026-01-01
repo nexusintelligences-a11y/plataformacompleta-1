@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { getSupabaseCredentialsFromEnv as getSupabaseCredentialsFromDb } from './credentialsDb.js';
+import { getSupabaseCredentials } from './credentialsDb.js';
 
 let cachedSupabaseClient: SupabaseClient | null = null;
 let cachedCredentials: { url: string; key: string } | null = null;
@@ -47,7 +47,8 @@ export async function getSupabaseClient(
   // Se não foram fornecidos headers, busca do banco de dados (supabase_config)
   try {
     console.log('🔍 [SUPABASE] Buscando credenciais do banco de dados (supabase_config)...');
-    const credentials = await getSupabaseCredentialsFromDb();
+    // For system-wide client, try any available tenant
+    const credentials = await getSupabaseCredentials('system');
     
     if (!credentials) {
       console.error('❌ [SUPABASE] Credenciais não encontradas no banco de dados (supabase_config)');
