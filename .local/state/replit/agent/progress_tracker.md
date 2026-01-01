@@ -14,9 +14,10 @@ ISSUES FIXED:
 - Fixed typo "AssinातuraUser" -> "AssinaturaUser"
 - Reordered tables: assinatura_contracts now defined BEFORE assinatura_signature_logs and assinatura_audit_trail
 - Moved backward compatibility aliases to AFTER table definitions
+- Configured workflow with webview output type for port 5000
 
 APPLICATION STATUS:
-- Workflow running on port 5000
+- Workflow running on port 5000 with webview output
 - Express + Vite server started successfully
 - All npm packages installed (1050 packages)
 - Database connections configured
