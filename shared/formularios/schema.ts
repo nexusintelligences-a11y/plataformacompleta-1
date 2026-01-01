@@ -454,6 +454,10 @@ export const assinatura_audit_trail = pgTable("assinatura_audit_trail", {
   contractIdIdx: index("idx_assinatura_audit_contract_id").on(table.contract_id),
 }));
 
+// Aliases for backward compatibility
+export const signature_logs = assinatura_signature_logs;
+export const audit_trail = assinatura_audit_trail;
+
 export const assinatura_contracts = pgTable("assinatura_contracts", {
   id: uuid("id").defaultRandom().primaryKey(),
   user_id: uuid("user_id").references(() => assinatura_users.id, { onDelete: "cascade" }),
