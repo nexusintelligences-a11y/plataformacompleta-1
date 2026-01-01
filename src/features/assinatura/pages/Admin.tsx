@@ -328,23 +328,76 @@ const Admin = () => {
 
   const handleCreateContract = async () => {
     if (!clientName.trim()) {
-      toast({ title: 'Erro', description: 'Nome do cliente e obrigatorio', variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Nome do cliente é obrigatório', variant: 'destructive' });
       return;
     }
 
     const cpfNumbers = clientCpf.replace(/\D/g, '');
     if (!validateCPF(cpfNumbers)) {
-      toast({ title: 'Erro', description: 'CPF invalido', variant: 'destructive' });
+      toast({ title: 'Erro', description: 'CPF inválido', variant: 'destructive' });
       return;
     }
 
     if (!clientEmail.trim() || !clientEmail.includes('@')) {
-      toast({ title: 'Erro', description: 'E-mail invalido', variant: 'destructive' });
+      toast({ title: 'Erro', description: 'E-mail inválido', variant: 'destructive' });
       return;
     }
 
     const contractHTML = generateContractHTML();
     const protocolNumber = `ASSIN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+    const appearanceConfigs = {
+      primaryColor,
+      textColor,
+      fontFamily,
+      fontSize,
+      logoUrl,
+      logoSize,
+      logoPosition,
+      companyName,
+      footerText
+    };
+
+    const verificationConfigs = {
+      primaryColor: verificationPrimaryColor,
+      textColor: verificationTextColor,
+      fontFamily: verificationFontFamily,
+      fontSize: verificationFontSize,
+      logoUrl: verificationLogoUrl,
+      logoSize: verificationLogoSize,
+      logoPosition: verificationLogoPosition,
+      footerText: verificationFooterText,
+      welcomeText: verificationWelcomeText,
+      instructions: verificationInstructions,
+      securityText: verificationSecurityText,
+      backgroundImage: verificationBackgroundImage,
+      backgroundColor: verificationBackgroundColor,
+      headerBackgroundColor: verificationHeaderBackgroundColor,
+      headerLogoUrl: verificationHeaderLogoUrl,
+      headerCompanyName: verificationHeaderCompanyName
+    };
+
+    const contractConfigs = {
+      title: contractTitle,
+      clauses
+    };
+
+    const progressTrackerConfigs = {
+      cardColor: progressCardColor,
+      buttonColor: progressButtonColor,
+      textColor: progressTextColor,
+      title: progressTitle,
+      subtitle: progressSubtitle,
+      step1Title: progressStep1Title,
+      step1Description: progressStep1Description,
+      step2Title: progressStep2Title,
+      step2Description: progressStep2Description,
+      step3Title: progressStep3Title,
+      step3Description: progressStep3Description,
+      buttonText: progressButtonText,
+      fontFamily: progressFontFamily,
+      fontSize: progressFontSize
+    };
 
     createContractMutation.mutate({
       client_name: clientName.trim(),
@@ -354,59 +407,26 @@ const Admin = () => {
       contract_html: contractHTML,
       protocol_number: protocolNumber,
       status: 'pending',
-      logo_url: logoUrl || undefined,
-      logo_size: logoSize,
-      logo_position: logoPosition,
-      primary_color: primaryColor,
-      text_color: textColor,
-      font_family: fontFamily,
-      font_size: fontSize,
-      company_name: companyName,
-      footer_text: footerText,
-      maleta_card_color: maletaCardColor,
-      maleta_button_color: maletaButtonColor,
-      maleta_text_color: maletaTextColor,
-      verification_primary_color: verificationPrimaryColor,
-      verification_text_color: verificationTextColor,
-      verification_font_family: verificationFontFamily,
-      verification_font_size: verificationFontSize,
-      verification_logo_url: verificationLogoUrl,
-      verification_logo_size: verificationLogoSize,
-      verification_logo_position: verificationLogoPosition,
-      verification_footer_text: verificationFooterText,
-      verification_welcome_text: verificationWelcomeText,
-      verification_instructions: verificationInstructions,
-      verification_background_image: verificationBackgroundImage,
-      verification_background_color: verificationBackgroundColor,
-      verification_header_background_color: verificationHeaderBackgroundColor,
-      verification_header_logo_url: verificationHeaderLogoUrl || undefined,
-      verification_header_company_name: verificationHeaderCompanyName,
-      progress_card_color: progressCardColor,
-      progress_button_color: progressButtonColor,
-      progress_text_color: progressTextColor,
-      progress_title: progressTitle,
-      progress_subtitle: progressSubtitle,
-      progress_step1_title: progressStep1Title,
-      progress_step1_description: progressStep1Description,
-      progress_step2_title: progressStep2Title,
-      progress_step2_description: progressStep2Description,
-      progress_step3_title: progressStep3Title,
-      progress_step3_description: progressStep3Description,
-      progress_button_text: progressButtonText,
-      progress_font_family: progressFontFamily,
-      progress_font_size: progressFontSize,
-      app_store_url: appStoreUrl || undefined,
-      google_play_url: googlePlayUrl || undefined,
-      parabens_title: parabensTitle,
-      parabens_subtitle: parabensSubtitle,
-      parabens_description: parabensDescription,
-      parabens_card_color: parabensCardColor,
-      parabens_background_color: parabensBackgroundColor,
-      parabens_button_color: parabensButtonColor,
-      parabens_text_color: parabensTextColor,
-      parabens_font_family: parabensFontFamily,
-      parabens_form_title: parabensFormTitle,
-      parabens_button_text: parabensButtonText,
+      appearance_configs: appearanceConfigs,
+      verification_configs: verificationConfigs,
+      contract_configs: contractConfigs,
+      progress_tracker_configs: progressTrackerConfigs,
+      reseller_welcome_configs: {
+        title: parabensTitle,
+        subtitle: parabensSubtitle,
+        description: parabensDescription,
+        cardColor: parabensCardColor,
+        backgroundColor: parabensBackgroundColor,
+        buttonColor: parabensButtonColor,
+        textColor: parabensTextColor,
+        fontFamily: parabensFontFamily,
+        formTitle: parabensFormTitle,
+        buttonText: parabensButtonText
+      },
+      app_promotion_configs: {
+        appStoreUrl,
+        googlePlayUrl
+      }
     } as any);
   };
 

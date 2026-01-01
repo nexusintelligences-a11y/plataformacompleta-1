@@ -41,14 +41,29 @@ const ContractContext = createContext<ContractContextType | undefined>(undefined
 export const ContractProvider = ({ children }: { children: ReactNode }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [govbrData, setGovbrData] = useState<GovBRData | null>(null);
-  const [contractData, setContractData] = useState<ContractData | null>(null);
+  const [contractData, setContractData] = useState<ContractData | null>(() => {
+    const saved = sessionStorage.getItem('verification_contract');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [addressData, setAddressData] = useState<AddressData | null>(null);
+
+  const updateContractData = (data: ContractData | null) => {
+    setContractData(data);
+    if (data) {
+      sessionStorage.setItem('verification_contract', JSON.stringify(data));
+    } else {
+      sessionStorage.removeItem('verification_contract');
+    }
+  };
 
   const resetFlow = () => {
     setCurrentStep(0);
     setGovbrData(null);
-    setContractData(null);
+    updateContractData(null);
     setAddressData(null);
+    sessionStorage.removeItem('verification_selfie');
+    sessionStorage.removeItem('verification_document');
+    sessionStorage.removeItem('verification_contract');
   };
 
   return (

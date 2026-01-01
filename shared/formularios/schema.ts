@@ -420,6 +420,10 @@ export const assinatura_users = pgTable("assinatura_users", {
   endereco_completo: text("endereco_completo"),
   govbr_verified: boolean("govbr_verified").default(false),
   govbr_nivel_conta: varchar("govbr_nivel_conta", { length: 20 }),
+  address_neighborhood: varchar("address_neighborhood", { length: 255 }),
+  govbr_token_hash: varchar("govbr_token_hash", { length: 255 }),
+  ensemble_score: integer("ensemble_score"),
+  quality_score: integer("quality_score"),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
