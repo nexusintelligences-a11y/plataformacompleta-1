@@ -23,6 +23,7 @@ import formsAutomationAPIRoutes from "./routes/formsAutomationAPI";
 import { requireTenant } from "./middleware/requireTenant";
 import { leadsPipelineRoutes } from "./routes/leadsPipelineRoutes";
 import { registerAssinaturaRoutes } from "./routes/assinatura-routes";
+import { registerSupabaseConfigRoutes } from "./routes/assinatura-supabase-routes";
 
 // Configure multer for logo uploads
 const logoStorage = multer.diskStorage({
@@ -102,7 +103,8 @@ export async function registerRoutes(app: Express) {
   
   // Assinatura Platform Routes - Digital Signature with Facial Recognition
   registerAssinaturaRoutes(app);
-  
+  registerSupabaseConfigRoutes(app);
+
   // Note: leads-pipeline routes registered above (before requireTenant middleware)
   
   app.use(formsAutomationAPIRoutes);
