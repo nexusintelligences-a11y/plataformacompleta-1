@@ -33,20 +33,20 @@ export const govbrConfig = {
   buttonText: "Entrar com GOV.BR",
   buttonLoadingText: "Autenticando...",
   
-  // Texto do rodapé
-  disclaimer: "Você será redirecionado para o site oficial do governo para realizar o login de forma segura. Seus dados não são compartilhados conosco.",
-  
-  // Recursos de segurança listados
-  securityFeatures: [
-    "Autenticação de dois fatores",
-    "Dados protegidos pela LGPD",
-    "Validade jurídica garantida",
-    "Criptografia de ponta a ponta",
-  ],
-  
   // Toast de sucesso
   successTitle: "Autenticação realizada!",
-  successDescription: "Sua identidade foi verificada com sucesso via GOV.BR.",
+  successDescription: "Sua identidade foi verificada com sucesso via GOV.BR (Nível Ouro).",
+
+  // Recursos de segurança listados
+  securityFeatures: [
+    "Assinatura com validade jurídica",
+    "Autenticação multifator",
+    "Rastreabilidade total",
+    "Segurança avançada SHA-256",
+  ],
+  
+  // Texto do rodapé
+  disclaimer: "Ao prosseguir, você concorda com a verificação de seus dados junto ao Governo Federal.",
 };
 
 // ===========================================

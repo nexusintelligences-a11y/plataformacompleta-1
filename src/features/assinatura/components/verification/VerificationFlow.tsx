@@ -159,6 +159,12 @@ export const VerificationFlow = ({
 
       setVerificationResult(verificationResult);
       completeVerification(result.similarity, result.passed, verificationResult);
+      
+      // Implement dynamic style injection for branding
+      const root = document.documentElement;
+      if (primaryColor) root.style.setProperty('--primary', primaryColor);
+      if (backgroundColor) root.style.setProperty('--background', backgroundColor);
+      
       goToStep('result');
       
       // Call onComplete callback to notify parent component
