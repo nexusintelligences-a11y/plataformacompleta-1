@@ -1,5 +1,6 @@
 import { db } from "../db";
-import { contracts, users, signatureLogs, auditTrail } from "../../assinatura/shared/schema";
+import { contracts, signatureLogs, auditTrail, users } from "../../assinatura/shared/schema";
+import { type InsertContract, type Contract, type InsertSignatureLog, type SignatureLog, type InsertAuditTrail, type AuditTrail } from "../../assinatura/shared/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
@@ -8,7 +9,7 @@ export const storage = {
     return await db.select().from(contracts);
   },
 
-  async getContract(id: string) {
+  async getContract(id: number) {
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
     return contract || null;
   },
@@ -21,11 +22,9 @@ export const storage = {
   async createContract(data: any) {
     try {
       console.log("💾 Inserindo contrato no banco:", JSON.stringify(data, null, 2));
-      const id = uuidv4();
       const accessToken = uuidv4();
       const [contract] = await db.insert(contracts).values({
         ...data,
-        id,
         access_token: accessToken,
         status: data.status || 'pending',
         created_at: new Date(),
@@ -38,7 +37,7 @@ export const storage = {
     }
   },
 
-  async updateContract(id: string, data: any) {
+  async updateContract(id: number, data: any) {
     const [contract] = await db.update(contracts)
       .set({ ...data })
       .where(eq(contracts.id, id))
@@ -60,10 +59,8 @@ export const storage = {
   },
 
   async createSignatureLog(data: any) {
-    const id = uuidv4();
     const [log] = await db.insert(signatureLogs).values({
       ...data,
-      id: data.id || id,
       timestamp: data.timestamp || new Date(),
       created_at: new Date(),
     }).returning();
@@ -71,10 +68,8 @@ export const storage = {
   },
 
   async createAuditTrail(data: any) {
-    const id = uuidv4();
     const [audit] = await db.insert(auditTrail).values({
       ...data,
-      id: data.id || id,
       timestamp: new Date(),
     }).returning();
     return audit;

@@ -1,7 +1,9 @@
-import { pgTable, text, varchar, boolean, timestamp, uuid, jsonb, inet } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { pgTable, serial, varchar, text, timestamp, decimal, boolean, uuid, jsonb } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
+// ========================================
+// TABELA USERS
+// ========================================
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   cpf: varchar("cpf", { length: 14 }).notNull().unique(),
@@ -19,73 +21,58 @@ export const users = pgTable("users", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// ========================================
+// TABELA CONTRACTS
+// ========================================
 export const contracts = pgTable("contracts", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  user_id: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  id: serial("id").primaryKey(),
+  access_token: uuid("access_token").defaultRandom().unique().notNull(),
+  client_name: varchar("client_name", { length: 255 }).notNull(),
+  client_cpf: varchar("client_cpf", { length: 20 }).notNull(),
+  client_email: varchar("client_email", { length: 255 }).notNull(),
+  client_phone: varchar("client_phone", { length: 20 }),
+  client_address: text("client_address"),
+  client_city: varchar("client_city", { length: 100 }),
+  client_state: varchar("client_state", { length: 2 }),
+  client_zip: varchar("client_zip", { length: 10 }),
   contract_html: text("contract_html").notNull(),
-  contract_pdf_url: text("contract_pdf_url"),
   status: varchar("status", { length: 50 }).default("pending"),
-  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  signed_at: timestamp("signed_at", { withTimezone: true }),
-  protocol_number: varchar("protocol_number", { length: 50 }).unique(),
-  client_name: varchar("client_name").notNull().default(""),
-  client_cpf: varchar("client_cpf").notNull().default(""),
-  client_email: varchar("client_email").notNull().default(""),
-  client_phone: varchar("client_phone"),
-  access_token: uuid("access_token").defaultRandom().unique(),
+  created_at: timestamp("created_at").defaultNow(),
+  signed_at: timestamp("signed_at"),
+  verification_selfie: text("verification_selfie"),
+  verification_document: text("verification_document"),
+  face_match_score: decimal("face_match_score", { precision: 5, scale: 2 }),
   logo_url: text("logo_url"),
-  logo_size: varchar("logo_size", { length: 20 }).default("medium"),
-  logo_position: varchar("logo_position", { length: 20 }).default("center"),
-  primary_color: varchar("primary_color", { length: 7 }),
-  text_color: varchar("text_color", { length: 7 }).default("#333333"),
-  font_family: varchar("font_family", { length: 100 }),
-  font_size: varchar("font_size", { length: 20 }),
+  primary_color: varchar("primary_color", { length: 7 }).default("#3B82F6"),
+  text_color: varchar("text_color", { length: 7 }).default("#1F2937"),
+  font_family: varchar("font_family", { length: 100 }).default("Inter"),
   company_name: varchar("company_name", { length: 255 }),
   footer_text: text("footer_text"),
-  maleta_card_color: varchar("maleta_card_color", { length: 7 }).default("#dbeafe"),
-  maleta_button_color: varchar("maleta_button_color", { length: 7 }).default("#22c55e"),
-  maleta_text_color: varchar("maleta_text_color", { length: 7 }).default("#1e40af"),
-  verification_primary_color: varchar("verification_primary_color", { length: 7 }),
-  verification_text_color: varchar("verification_text_color", { length: 7 }).default("#000000"),
-  verification_font_family: varchar("verification_font_family", { length: 100 }),
-  verification_font_size: varchar("verification_font_size", { length: 20 }),
-  verification_logo_url: text("verification_logo_url"),
-  verification_logo_size: varchar("verification_logo_size", { length: 20 }),
-  verification_logo_position: varchar("verification_logo_position", { length: 20 }),
-  verification_footer_text: text("verification_footer_text"),
-  verification_background_image: text("verification_background_image"),
-  verification_background_color: varchar("verification_background_color", { length: 7 }).default("#ffffff"),
-  verification_icon_url: text("verification_icon_url"),
-  verification_welcome_text: varchar("verification_welcome_text", { length: 255 }),
   verification_instructions: text("verification_instructions"),
-  verification_header_background_color: varchar("verification_header_background_color", { length: 7 }).default("#2c3e50"),
-  verification_header_logo_url: text("verification_header_logo_url"),
-  verification_header_company_name: varchar("verification_header_company_name", { length: 255 }),
   verification_security_message: text("verification_security_message"),
-  progress_card_color: varchar("progress_card_color", { length: 7 }).default("#dbeafe"),
-  progress_button_color: varchar("progress_button_color", { length: 7 }).default("#22c55e"),
-  progress_text_color: varchar("progress_text_color", { length: 7 }).default("#1e40af"),
-  progress_title: varchar("progress_title", { length: 100 }).default("Assinatura Digital"),
-  progress_subtitle: text("progress_subtitle"),
-  progress_step1_title: varchar("progress_step1_title", { length: 255 }),
-  progress_step1_description: text("progress_step1_description"),
-  progress_step2_title: varchar("progress_step2_title", { length: 255 }),
-  progress_step2_description: text("progress_step2_description"),
-  progress_step3_title: varchar("progress_step3_title", { length: 255 }),
-  progress_step3_description: text("progress_step3_description"),
-  progress_button_text: varchar("progress_button_text", { length: 255 }),
-  progress_font_family: varchar("progress_font_family", { length: 100 }),
-  progress_font_size: varchar("progress_font_size", { length: 20 }),
+  verification_icon_url: text("verification_icon_url"),
+  security_message: text("security_message"),
+  header_background_color: varchar("header_background_color", { length: 7 }),
+  progress_step1_text: varchar("progress_step1_text", { length: 255 }),
+  progress_step2_text: varchar("progress_step2_text", { length: 255 }),
+  progress_step3_text: varchar("progress_step3_text", { length: 255 }),
+  progress_step4_text: varchar("progress_step4_text", { length: 255 }),
+  success_title: varchar("success_title", { length: 255 }),
+  success_message: text("success_message"),
+  success_button_text: varchar("success_button_text", { length: 100 }),
   app_store_url: text("app_store_url"),
-  google_play_url: text("google_play_url"),
-  selfie_photo: text("selfie_photo"),
-  document_photo: text("document_photo"),
-  signed_contract_html: text("signed_contract_html"),
+  play_store_url: text("play_store_url"),
+  govbr_token_hash: varchar("govbr_token_hash", { length: 255 }),
+  govbr_cpf: varchar("govbr_cpf", { length: 20 }),
+  govbr_validated: boolean("govbr_validated").default(false),
 });
 
+// ========================================
+// TABELAS DE LOG E AUDITORIA
+// ========================================
 export const signatureLogs = pgTable("signature_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
-  contract_id: uuid("contract_id").references(() => contracts.id, { onDelete: "cascade" }),
+  contract_id: serial("contract_id").references(() => contracts.id, { onDelete: "cascade" }),
   ip_address: varchar("ip_address", { length: 45 }).notNull(),
   user_agent: text("user_agent"),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
@@ -97,158 +84,90 @@ export const signatureLogs = pgTable("signature_logs", {
 
 export const auditTrail = pgTable("audit_trail", {
   id: uuid("id").defaultRandom().primaryKey(),
-  contract_id: uuid("contract_id").references(() => contracts.id, { onDelete: "cascade" }),
+  contract_id: serial("contract_id").references(() => contracts.id, { onDelete: "cascade" }),
   action: varchar("action", { length: 100 }).notNull(),
-  user_id: uuid("user_id").references(() => users.id),
   metadata: jsonb("metadata"),
   timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, created_at: true });
+// ========================================
+// SCHEMAS ZOD
+// ========================================
+const optionalUrlOrEmpty = z.string().optional().or(z.literal("")).refine(
+  (val) => !val || val === "" || z.string().url().safeParse(val).success,
+  { message: "Deve ser uma URL válida ou vazio" }
+);
 
-// Full contract schema (for POST)
+const optionalColorOrEmpty = z.string().optional().or(z.literal("")).refine(
+  (val) => !val || val === "" || /^#[0-9A-Fa-f]{3,6}$/.test(val),
+  { message: "Deve ser uma cor hex válida (#RRGGBB) ou vazio" }
+);
+
 export const insertContractSchema = z.object({
-  user_id: z.string().uuid().nullable().optional(),
+  client_name: z.string().min(1, "Nome é obrigatório"),
+  client_cpf: z.string()
+    .min(11, "CPF deve ter 11 dígitos")
+    .max(14, "CPF inválido")
+    .transform((val) => val.replace(/\D/g, ""))
+    .refine((val) => val.length === 11, "CPF deve ter 11 dígitos"),
+  client_email: z.string().email("Email inválido").min(1, "Email é obrigatório"),
   contract_html: z.string().min(1, "Conteúdo do contrato é obrigatório"),
-  contract_pdf_url: z.string().nullable().optional(),
-  status: z.string().optional(),
-  signed_at: z.union([z.instanceof(Date), z.string().datetime(), z.null()]).optional(),
-  protocol_number: z.string().optional(),
-  client_name: z.string().min(1, "Nome do cliente é obrigatório"),
-  client_cpf: z.string().min(11, "CPF deve ter 11 dígitos"),
-  client_email: z.string().email("Email inválido"),
-  client_phone: z.string().nullable().optional(),
-  logo_url: z.string().nullable().optional().or(z.literal("")),
-  logo_size: z.enum(["small", "medium", "large"]).optional(),
-  logo_position: z.enum(["center", "left", "right"]).optional(),
-  primary_color: z.string().nullable().optional(),
-  text_color: z.string().nullable().optional(),
-  font_family: z.string().nullable().optional(),
-  font_size: z.string().nullable().optional(),
-  company_name: z.string().nullable().optional(),
-  footer_text: z.string().nullable().optional(),
-  maleta_card_color: z.string().nullable().optional(),
-  maleta_button_color: z.string().nullable().optional(),
-  maleta_text_color: z.string().nullable().optional(),
-  verification_primary_color: z.string().nullable().optional(),
-  verification_text_color: z.string().nullable().optional(),
-  verification_font_family: z.string().nullable().optional(),
-  verification_font_size: z.string().nullable().optional(),
-  verification_logo_url: z.string().nullable().optional(),
-  verification_logo_size: z.enum(["small", "medium", "large"]).optional(),
-  verification_logo_position: z.enum(["center", "left", "right"]).optional(),
-  verification_footer_text: z.string().nullable().optional(),
-  verification_background_image: z.string().nullable().optional(),
-  verification_icon_url: z.string().nullable().optional(),
-  verification_welcome_text: z.string().nullable().optional(),
-  verification_instructions: z.string().nullable().optional(),
-  verification_security_message: z.string().nullable().optional(),
-  verification_background_color: z.string().nullable().optional(),
-  verification_header_background_color: z.string().nullable().optional(),
-  verification_header_logo_url: z.string().nullable().optional(),
-  verification_header_company_name: z.string().nullable().optional(),
-  progress_card_color: z.string().nullable().optional(),
-  progress_button_color: z.string().nullable().optional(),
-  progress_text_color: z.string().nullable().optional(),
-  progress_title: z.string().nullable().optional(),
-  progress_subtitle: z.string().nullable().optional(),
-  progress_step1_title: z.string().nullable().optional(),
-  progress_step1_description: z.string().nullable().optional(),
-  progress_step2_title: z.string().nullable().optional(),
-  progress_step2_description: z.string().nullable().optional(),
-  progress_button_text: z.string().nullable().optional(),
-  progress_font_family: z.string().nullable().optional(),
-  progress_font_size: z.string().nullable().optional(),
-  app_store_url: z.string().nullable().optional().or(z.literal("")),
-  google_play_url: z.string().nullable().optional().or(z.literal("")),
-}).transform((data: any) => ({
-  ...data,
-  signed_at: data.signed_at && typeof data.signed_at === 'string' ? new Date(data.signed_at) : data.signed_at
-}));
+  client_phone: z.string().optional().or(z.literal("")),
+  client_address: z.string().optional().or(z.literal("")),
+  client_city: z.string().optional().or(z.literal("")),
+  client_state: z.string().max(2).optional().or(z.literal("")),
+  client_zip: z.string().optional().or(z.literal("")),
+  logo_url: optionalUrlOrEmpty,
+  primary_color: optionalColorOrEmpty,
+  text_color: optionalColorOrEmpty,
+  font_family: z.string().optional().or(z.literal("")),
+  company_name: z.string().optional().or(z.literal("")),
+  footer_text: z.string().optional().or(z.literal("")),
+  verification_instructions: z.string().optional().or(z.literal("")),
+  verification_security_message: z.string().optional().or(z.literal("")),
+  verification_icon_url: optionalUrlOrEmpty,
+  security_message: z.string().optional().or(z.literal("")),
+  header_background_color: optionalColorOrEmpty,
+  progress_step1_text: z.string().optional().or(z.literal("")),
+  progress_step2_text: z.string().optional().or(z.literal("")),
+  progress_step3_text: z.string().optional().or(z.literal("")),
+  progress_step4_text: z.string().optional().or(z.literal("")),
+  success_title: z.string().optional().or(z.literal("")),
+  success_message: z.string().optional().or(z.literal("")),
+  success_button_text: z.string().optional().or(z.literal("")),
+  app_store_url: optionalUrlOrEmpty,
+  play_store_url: optionalUrlOrEmpty,
+});
 
-// Partial contract schema (for PATCH)
-export const insertContractPartialSchema = z.object({
-  user_id: z.string().uuid().nullable().optional(),
-  contract_html: z.string().optional(),
-  contract_pdf_url: z.string().nullable().optional(),
-  status: z.string().optional(),
-  signed_at: z.union([z.instanceof(Date), z.string().datetime(), z.null()]).optional(),
-  protocol_number: z.string().optional(),
-  client_name: z.string().optional(),
-  client_cpf: z.string().optional(),
-  client_email: z.string().optional(),
-  client_phone: z.string().nullable().optional(),
-  logo_url: z.string().nullable().optional(),
-  logo_size: z.enum(["small", "medium", "large"]).optional(),
-  logo_position: z.enum(["center", "left", "right"]).optional(),
-  primary_color: z.string().nullable().optional(),
-  text_color: z.string().nullable().optional(),
-  font_family: z.string().nullable().optional(),
-  font_size: z.string().nullable().optional(),
-  company_name: z.string().nullable().optional(),
-  footer_text: z.string().nullable().optional(),
-  maleta_card_color: z.string().nullable().optional(),
-  maleta_button_color: z.string().nullable().optional(),
-  maleta_text_color: z.string().nullable().optional(),
-  verification_primary_color: z.string().nullable().optional(),
+export const insertContractPartialSchema = insertContractSchema.partial();
 
-  verification_font_family: z.string().nullable().optional(),
-  verification_font_size: z.string().nullable().optional(),
-  verification_logo_url: z.string().nullable().optional(),
-  verification_logo_size: z.enum(["small", "medium", "large"]).optional(),
-  verification_logo_position: z.enum(["center", "left", "right"]).optional(),
-  verification_footer_text: z.string().nullable().optional(),
-  verification_background_image: z.string().nullable().optional(),
-  verification_icon_url: z.string().nullable().optional(),
-  verification_welcome_text: z.string().nullable().optional(),
-  verification_instructions: z.string().nullable().optional(),
-  verification_security_message: z.string().nullable().optional(),
-  verification_background_color: z.string().nullable().optional(),
-  verification_header_background_color: z.string().nullable().optional(),
-  verification_header_logo_url: z.string().nullable().optional(),
-  verification_header_company_name: z.string().nullable().optional(),
-  progress_card_color: z.string().nullable().optional(),
-  progress_button_color: z.string().nullable().optional(),
-  progress_text_color: z.string().nullable().optional(),
-  progress_title: z.string().nullable().optional(),
-  progress_subtitle: z.string().nullable().optional(),
-  progress_step1_title: z.string().nullable().optional(),
-  progress_step1_description: z.string().nullable().optional(),
-  progress_step2_title: z.string().nullable().optional(),
-  progress_step2_description: z.string().nullable().optional(),
-  progress_button_text: z.string().nullable().optional(),
-  progress_font_family: z.string().nullable().optional(),
-  progress_font_size: z.string().nullable().optional(),
-  app_store_url: z.string().nullable().optional(),
-  google_play_url: z.string().nullable().optional(),
-}).transform((data: any) => ({
-  ...data,
-  signed_at: data.signed_at && typeof data.signed_at === 'string' ? new Date(data.signed_at) : data.signed_at
-}));
-
-// Signature log schema
 export const insertSignatureLogSchema = z.object({
-  contract_id: z.string().uuid(),
+  contract_id: z.number(),
   ip_address: z.string(),
   user_agent: z.string().optional(),
   timestamp: z.union([z.instanceof(Date), z.string().datetime()]),
   govbr_token_hash: z.string().nullable().optional(),
   govbr_auth_time: z.union([z.instanceof(Date), z.string().datetime(), z.null()]).optional(),
   signature_valid: z.boolean().optional(),
-}).transform((data: any) => ({
-  ...data,
-  timestamp: typeof data.timestamp === 'string' ? new Date(data.timestamp) : data.timestamp,
-  govbr_auth_time: data.govbr_auth_time && typeof data.govbr_auth_time === 'string' ? new Date(data.govbr_auth_time) : data.govbr_auth_time
-}));
+});
 
-export const insertAuditTrailSchema = createInsertSchema(auditTrail).omit({ id: true, timestamp: true });
+export const insertUserSchema = z.object({
+  cpf: z.string().length(11),
+  nome_completo: z.string(),
+  email: z.string().email(),
+});
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type InsertContract = z.infer<typeof insertContractSchema>;
-export type InsertSignatureLog = z.infer<typeof insertSignatureLogSchema>;
-export type InsertAuditTrail = z.infer<typeof insertAuditTrailSchema>;
+export const insertAuditTrailSchema = z.object({
+  contract_id: z.number(),
+  action: z.string(),
+  metadata: z.any().optional(),
+});
 
-export type User = typeof users.$inferSelect;
-export type Contract = typeof contracts.$inferSelect;
 export type SignatureLog = typeof signatureLogs.$inferSelect;
 export type AuditTrail = typeof auditTrail.$inferSelect;
+export type InsertSignatureLog = z.infer<typeof insertSignatureLogSchema>;
+export type InsertAuditTrail = z.infer<typeof insertAuditTrailSchema>;
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;

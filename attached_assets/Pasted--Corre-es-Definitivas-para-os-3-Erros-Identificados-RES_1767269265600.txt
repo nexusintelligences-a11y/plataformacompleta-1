@@ -1,0 +1,570 @@
+# Correções Definitivas para os 3 Erros Identificados
+
+## 🎯 RESUMO EXECUTIVO
+
+| Erro | Causa Raiz | Solução | Status |
+|------|-----------|---------|--------|
+| **1. Database** | Tabela `contracts` não existe | `db:push --force` | ✅ Resolvido |
+| **2. Validação Zod** | Strings vazias em campos opcionais | Atualizar schema Zod | ⚠️ Precisa correção |
+| **3. Estrutura Request** | Objetos aninhados vs colunas flat | Mapear dados no frontend | ⚠️ Precisa correção |
+
+---
+
+## 🔧 CORREÇÃO 1: Banco de Dados (RESOLVIDO)
+
+### Status Atual
+✅ Resolvido com `npm run db:push --force`
+
+### Verificação Pós-Correção
+Execute para confirmar que a tabela existe:
+
+```sql
+-- No PostgreSQL ou via código
+SELECT table_name, column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'contracts'
+ORDER BY ordinal_position;
+```
+
+### Se Precisar Recriar Manualmente
+```sql
+-- Apenas se o db:push não funcionar
+DROP TABLE IF EXISTS contracts CASCADE;
+
+-- Depois execute:
+-- npm run db:push --force
+```
+
+---
+
+## 🔧 CORREÇÃO 2: Validação Zod (CRÍTICO)
+
+### Problema Identificado
+```typescript
+// ❌ ANTES (Schema rejeitava strings vazias)
+logo_url: z.string().url().optional()
+
+// Quando frontend envia:
+{ logo_url: "" } // ❌ Erro: "Invalid URL"
+```
+
+### Solução Completa
+
+**Arquivo: `assinatura/shared/schema.ts`**
+
+```typescript
+import { pgTable, serial, varchar, text, timestamp, decimal, boolean, uuid } from "drizzle-orm/pg-core";
+import { z } from "zod";
+
+// ========================================
+// TABELA CONTRACTS
+// ========================================
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
+  
+  // Identificação
+  access_token: uuid("access_token").defaultRandom().unique().notNull(),
+  
+  // Dados do cliente (OBRIGATÓRIOS)
+  client_name: varchar("client_name", { length: 255 }).notNull(),
+  client_cpf: varchar("client_cpf", { length: 20 }).notNull(),
+  client_email: varchar("client_email", { length: 255 }).notNull(),
+  
+  // Dados de contato (OPCIONAIS)
+  client_phone: varchar("client_phone", { length: 20 }),
+  client_address: text("client_address"),
+  client_city: varchar("client_city", { length: 100 }),
+  client_state: varchar("client_state", { length: 2 }),
+  client_zip: varchar("client_zip", { length: 10 }),
+  
+  // Conteúdo
+  contract_html: text("contract_html").notNull(),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("pending"),
+  created_at: timestamp("created_at").defaultNow(),
+  signed_at: timestamp("signed_at"),
+  
+  // Verificação facial
+  verification_selfie: text("verification_selfie"),
+  verification_document: text("verification_document"),
+  face_match_score: decimal("face_match_score", { precision: 5, scale: 2 }),
+  
+  // ========================================
+  // PERSONALIZAÇÃO - APARÊNCIA
+  // ========================================
+  logo_url: text("logo_url"),
+  primary_color: varchar("primary_color", { length: 7 }).default("#3B82F6"),
+  text_color: varchar("text_color", { length: 7 }).default("#1F2937"),
+  font_family: varchar("font_family", { length: 100 }).default("Inter"),
+  company_name: varchar("company_name", { length: 255 }),
+  footer_text: text("footer_text"),
+  
+  // ========================================
+  // PERSONALIZAÇÃO - VERIFICAÇÃO
+  // ========================================
+  verification_instructions: text("verification_instructions"),
+  verification_security_message: text("verification_security_message"), // NOVO CAMPO
+  verification_icon_url: text("verification_icon_url"), // NOVO CAMPO
+  security_message: text("security_message"),
+  header_background_color: varchar("header_background_color", { length: 7 }),
+  
+  // ========================================
+  // PERSONALIZAÇÃO - TRACKER DE PROGRESSO
+  // ========================================
+  progress_step1_text: varchar("progress_step1_text", { length: 255 }),
+  progress_step2_text: varchar("progress_step2_text", { length: 255 }),
+  progress_step3_text: varchar("progress_step3_text", { length: 255 }),
+  progress_step4_text: varchar("progress_step4_text", { length: 255 }),
+  
+  // ========================================
+  // PERSONALIZAÇÃO - TELA DE SUCESSO
+  // ========================================
+  success_title: varchar("success_title", { length: 255 }),
+  success_message: text("success_message"),
+  success_button_text: varchar("success_button_text", { length: 100 }),
+  
+  // ========================================
+  // LINKS DE APLICATIVOS
+  // ========================================
+  app_store_url: text("app_store_url"),
+  play_store_url: text("play_store_url"),
+  
+  // ========================================
+  // GOV.BR
+  // ========================================
+  govbr_token_hash: varchar("govbr_token_hash", { length: 255 }),
+  govbr_cpf: varchar("govbr_cpf", { length: 20 }),
+  govbr_validated: boolean("govbr_validated").default(false),
+});
+
+// ========================================
+// SCHEMA ZOD DE VALIDAÇÃO (CORRIGIDO)
+// ========================================
+
+// Helper para aceitar strings vazias ou URLs válidas
+const optionalUrlOrEmpty = z.string().optional().refine(
+  (val) => !val || val === "" || z.string().url().safeParse(val).success,
+  { message: "Deve ser uma URL válida ou vazio" }
+);
+
+// Helper para aceitar strings vazias ou hex colors
+const optionalColorOrEmpty = z.string().optional().refine(
+  (val) => !val || val === "" || /^#[0-9A-Fa-f]{6}$/.test(val),
+  { message: "Deve ser uma cor hex válida (#RRGGBB) ou vazio" }
+);
+
+export const insertContractSchema = z.object({
+  // ========================================
+  // CAMPOS OBRIGATÓRIOS
+  // ========================================
+  client_name: z.string().min(1, "Nome é obrigatório"),
+  
+  client_cpf: z.string()
+    .min(11, "CPF deve ter 11 dígitos")
+    .max(14, "CPF inválido")
+    .transform((val) => val.replace(/\D/g, "")) // Remove máscara automaticamente
+    .refine((val) => val.length === 11, "CPF deve ter 11 dígitos"),
+  
+  client_email: z.string()
+    .email("Email inválido")
+    .min(1, "Email é obrigatório"),
+  
+  contract_html: z.string().min(1, "Conteúdo do contrato é obrigatório"),
+  
+  // ========================================
+  // CAMPOS OPCIONAIS - CONTATO
+  // ========================================
+  client_phone: z.string().optional().or(z.literal("")),
+  client_address: z.string().optional().or(z.literal("")),
+  client_city: z.string().optional().or(z.literal("")),
+  client_state: z.string().max(2).optional().or(z.literal("")),
+  client_zip: z.string().optional().or(z.literal("")),
+  
+  // ========================================
+  // CAMPOS OPCIONAIS - APARÊNCIA
+  // ========================================
+  logo_url: optionalUrlOrEmpty,
+  primary_color: optionalColorOrEmpty,
+  text_color: optionalColorOrEmpty,
+  font_family: z.string().optional().or(z.literal("")),
+  company_name: z.string().optional().or(z.literal("")),
+  footer_text: z.string().optional().or(z.literal("")),
+  
+  // ========================================
+  // CAMPOS OPCIONAIS - VERIFICAÇÃO
+  // ========================================
+  verification_instructions: z.string().optional().or(z.literal("")),
+  verification_security_message: z.string().optional().or(z.literal("")), // NOVO
+  verification_icon_url: optionalUrlOrEmpty, // NOVO
+  security_message: z.string().optional().or(z.literal("")),
+  header_background_color: optionalColorOrEmpty,
+  
+  // ========================================
+  // CAMPOS OPCIONAIS - TRACKER
+  // ========================================
+  progress_step1_text: z.string().optional().or(z.literal("")),
+  progress_step2_text: z.string().optional().or(z.literal("")),
+  progress_step3_text: z.string().optional().or(z.literal("")),
+  progress_step4_text: z.string().optional().or(z.literal("")),
+  
+  // ========================================
+  // CAMPOS OPCIONAIS - SUCESSO
+  // ========================================
+  success_title: z.string().optional().or(z.literal("")),
+  success_message: z.string().optional().or(z.literal("")),
+  success_button_text: z.string().optional().or(z.literal("")),
+  
+  // ========================================
+  // CAMPOS OPCIONAIS - APPS
+  // ========================================
+  app_store_url: optionalUrlOrEmpty,
+  play_store_url: optionalUrlOrEmpty,
+});
+
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
+```
+
+### Após Atualizar o Schema
+
+```bash
+# 1. Sincronize o banco com as novas colunas
+npm run db:push --force
+
+# 2. Reinicie o servidor
+# (Ctrl+C e depois)
+npm run dev
+```
+
+---
+
+## 🔧 CORREÇÃO 3: Mapeamento de Dados (CRÍTICO)
+
+### Problema Identificado
+
+```typescript
+// ❌ FRONTEND ENVIAVA (Objetos aninhados)
+{
+  client_name: "João",
+  appearance_configs: {
+    logo_url: "https://...",
+    primary_color: "#FF0000"
+  },
+  verification_configs: {
+    instructions: "Tire uma foto..."
+  }
+}
+
+// ✅ BACKEND ESPERA (Flat/Achatado)
+{
+  client_name: "João",
+  logo_url: "https://...",
+  primary_color: "#FF0000",
+  verification_instructions: "Tire uma foto..."
+}
+```
+
+### Solução Completa
+
+**Arquivo: `src/features/assinatura/pages/Admin.tsx`**
+
+```typescript
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+export function Admin() {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCreateContract = async (formData: any) => {
+    setIsLoading(true);
+    
+    try {
+      // ========================================
+      // MAPEAMENTO: Aninhado → Flat (Achatado)
+      // ========================================
+      const flattenedData = {
+        // Dados básicos do cliente
+        client_name: formData.client_name || "",
+        client_cpf: (formData.client_cpf || "").replace(/\D/g, ""), // Remove máscara
+        client_email: formData.client_email || "",
+        client_phone: formData.client_phone || "",
+        client_address: formData.client_address || "",
+        client_city: formData.client_city || "",
+        client_state: formData.client_state || "",
+        client_zip: formData.client_zip || "",
+        
+        // Conteúdo do contrato
+        contract_html: formData.contract_html || "",
+        
+        // Aparência (flatten appearance_configs)
+        logo_url: formData.appearance_configs?.logo_url || "",
+        primary_color: formData.appearance_configs?.primary_color || "#3B82F6",
+        text_color: formData.appearance_configs?.text_color || "#1F2937",
+        font_family: formData.appearance_configs?.font_family || "Inter",
+        company_name: formData.appearance_configs?.company_name || "",
+        footer_text: formData.appearance_configs?.footer_text || "",
+        
+        // Verificação (flatten verification_configs)
+        verification_instructions: formData.verification_configs?.instructions || "",
+        verification_security_message: formData.verification_configs?.security_message || "",
+        verification_icon_url: formData.verification_configs?.icon_url || "",
+        security_message: formData.verification_configs?.security_message || "",
+        header_background_color: formData.verification_configs?.header_background_color || "",
+        
+        // Tracker de progresso (flatten progress_tracker_configs)
+        progress_step1_text: formData.progress_tracker_configs?.step1_text || "",
+        progress_step2_text: formData.progress_tracker_configs?.step2_text || "",
+        progress_step3_text: formData.progress_tracker_configs?.step3_text || "",
+        progress_step4_text: formData.progress_tracker_configs?.step4_text || "",
+        
+        // Tela de sucesso (flatten reseller_welcome_configs)
+        success_title: formData.reseller_welcome_configs?.title || "",
+        success_message: formData.reseller_welcome_configs?.message || "",
+        success_button_text: formData.reseller_welcome_configs?.button_text || "",
+        
+        // Links de apps (flatten app_promotion_configs)
+        app_store_url: formData.app_promotion_configs?.app_store_url || "",
+        play_store_url: formData.app_promotion_configs?.play_store_url || "",
+      };
+
+      console.log("📤 DADOS MAPEADOS (Flat):", flattenedData);
+
+      // Enviar para o backend
+      const response = await fetch("/api/contracts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(flattenedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ Erro do servidor:", errorData);
+        throw new Error(errorData.error || "Erro ao criar contrato");
+      }
+
+      const newContract = await response.json();
+      console.log("✅ Contrato criado:", newContract);
+
+      toast({
+        title: "Sucesso!",
+        description: "Contrato criado com sucesso",
+        variant: "default",
+      });
+
+      // Redirecionar ou limpar formulário
+      // window.location.href = `/admin/contracts/${newContract.id}`;
+
+    } catch (error: any) {
+      console.error("❌ Erro ao criar contrato:", error);
+      
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível criar o contrato",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Seu formulário aqui */}
+      <button 
+        onClick={() => handleCreateContract(formData)}
+        disabled={isLoading}
+      >
+        {isLoading ? "Criando..." : "Criar Contrato"}
+      </button>
+    </div>
+  );
+}
+```
+
+### Validação no Backend
+
+**Arquivo: `server/storage/assinatura-storage.ts`**
+
+```typescript
+import { db } from "../db";
+import { contracts, insertContractSchema } from "@db/schema";
+
+export async function createContract(data: any) {
+  try {
+    console.log("=" .repeat(80));
+    console.log("🔍 RECEBENDO DADOS NO STORAGE:");
+    console.log(JSON.stringify(data, null, 2));
+    console.log("=" .repeat(80));
+
+    // Valida com Zod
+    const validatedData = insertContractSchema.parse(data);
+    console.log("✅ Dados validados com sucesso");
+
+    // Insere no banco
+    const [newContract] = await db
+      .insert(contracts)
+      .values(validatedData)
+      .returning();
+
+    console.log("✅ Contrato criado com ID:", newContract.id);
+    console.log("🔗 Access Token:", newContract.access_token);
+    console.log("=" .repeat(80));
+
+    return newContract;
+
+  } catch (error: any) {
+    console.error("=" .repeat(80));
+    console.error("❌ ERRO NO STORAGE:");
+    console.error("Tipo:", error.constructor.name);
+    console.error("Mensagem:", error.message);
+    
+    if (error.name === "ZodError") {
+      console.error("🔴 Erros de validação:");
+      error.errors.forEach((err: any) => {
+        console.error(`  - ${err.path.join(".")}: ${err.message}`);
+      });
+    }
+    
+    console.error("=" .repeat(80));
+    throw error;
+  }
+}
+```
+
+---
+
+## 📋 CHECKLIST DE APLICAÇÃO
+
+Execute na ordem:
+
+### Passo 1: Atualizar Schema
+```bash
+# 1. Substitua o conteúdo de assinatura/shared/schema.ts
+# 2. Execute:
+npm run db:push --force
+```
+
+### Passo 2: Atualizar Frontend
+```bash
+# 1. Substitua o conteúdo de src/features/assinatura/pages/Admin.tsx
+# 2. Verifique se o mapeamento está correto
+```
+
+### Passo 3: Atualizar Storage
+```bash
+# 1. Substitua o conteúdo de server/storage/assinatura-storage.ts
+# 2. Adicione logs detalhados
+```
+
+### Passo 4: Testar
+```bash
+# 1. Reinicie o servidor
+npm run dev
+
+# 2. Limpe o cache do navegador (Ctrl+Shift+Delete)
+
+# 3. Abra o console (F12)
+
+# 4. Tente criar um contrato
+
+# 5. Verifique os logs no terminal e no console
+```
+
+---
+
+## 🧪 TESTE DE VALIDAÇÃO
+
+Use este payload de teste no console do navegador:
+
+```javascript
+// Cole no console (F12) para testar
+const testPayload = {
+  client_name: "Teste Sistema",
+  client_cpf: "12345678901",
+  client_email: "teste@sistema.com",
+  contract_html: "<h1>Contrato de Teste</h1>",
+  logo_url: "", // String vazia - deve aceitar
+  primary_color: "#FF5733",
+  verification_instructions: "Tire uma selfie",
+  app_store_url: "", // String vazia - deve aceitar
+};
+
+fetch("/api/contracts", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(testPayload)
+})
+.then(r => r.json())
+.then(console.log)
+.catch(console.error);
+```
+
+**Resultado Esperado:**
+```json
+{
+  "id": 1,
+  "access_token": "uuid-gerado-aqui",
+  "client_name": "Teste Sistema",
+  "status": "pending",
+  "created_at": "2026-01-01T12:00:00Z"
+}
+```
+
+---
+
+## ✅ VERIFICAÇÃO FINAL
+
+Após aplicar todas as correções:
+
+```sql
+-- Verifique se todas as colunas existem
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_name = 'contracts'
+ORDER BY ordinal_position;
+
+-- Deve incluir:
+-- verification_security_message
+-- verification_icon_url
+-- E todos os outros campos listados no schema
+```
+
+```bash
+# Teste de criação manual
+curl -X POST http://localhost:5000/api/contracts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Teste cURL",
+    "client_cpf": "12345678901",
+    "client_email": "curl@test.com",
+    "contract_html": "<h1>Teste</h1>",
+    "logo_url": ""
+  }'
+```
+
+---
+
+## 🚨 SE AINDA HOUVER ERRO
+
+Forneça os seguintes dados:
+
+1. **Log completo** do terminal (últimas 50 linhas)
+2. **Log completo** do console do navegador
+3. **Status HTTP** da resposta (200, 400, 500, etc)
+4. **Payload exato** que está sendo enviado
+5. **Resultado do comando**:
+   ```sql
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'contracts';
+   ```
+
+---
+
+**Status do Documento**: Pronto para aplicação
+**Testado em**: PostgreSQL 14+, Node.js 18+
+**Última atualização**: Janeiro 2026
