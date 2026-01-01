@@ -424,6 +424,7 @@ export const assinatura_users = pgTable("assinatura_users", {
   govbr_token_hash: varchar("govbr_token_hash", { length: 255 }),
   ensemble_score: integer("ensemble_score"),
   quality_score: integer("quality_score"),
+  last_activity_at: timestamp("last_activity_at", { withTimezone: true }),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

@@ -13,8 +13,15 @@ router.post("/contracts/:id/audit", async (req, res) => {
   try {
     // Implementar lógica de persistência de log de auditoria
     console.log(`[AUDIT] Action: ${action} on Contract: ${id}`, metadata);
+    
+    // Atualizar timestamp de última atividade no contrato
+    await db.update(assinatura_contracts)
+      .set({ last_activity_at: new Date() })
+      .where(eq(assinatura_contracts.id, id));
+
     res.json({ success: true });
   } catch (error) {
+    console.error("Erro na auditoria:", error);
     res.status(500).json({ error: "Erro ao registrar log de auditoria" });
   }
 });
