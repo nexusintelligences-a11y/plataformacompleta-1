@@ -35,16 +35,18 @@ export const GovBRStep = ({ clientData }: GovBRStepProps) => {
       ? {
           cpf: maskCPF(clientData.client_cpf),
           nome: clientData.client_name,
-          nivel_conta: 'prata',
+          nivel_conta: 'ouro',
           email: clientData.client_email,
           authenticated: true,
+          sha256: 'simulated-hash-sha256-' + Date.now(),
         }
       : {
           cpf: '123.456.789-00',
           nome: 'João da Silva',
-          nivel_conta: 'prata',
+          nivel_conta: 'ouro',
           email: 'joao.silva@email.com',
           authenticated: true,
+          sha256: 'simulated-hash-sha256-' + Date.now(),
         };
 
     setGovbrData(userData);

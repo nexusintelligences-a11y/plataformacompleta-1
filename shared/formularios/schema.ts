@@ -94,6 +94,9 @@ export const formSubmissions = pgTable("form_submissions", {
   addressNeighborhood: text("address_neighborhood"),
   addressCity: text("address_city"),
   addressState: text("address_state"),
+  govbrStatus: text("govbr_status"),
+  govbrNivel: text("govbr_nivel"),
+  govbrVerified: boolean("govbr_verified").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({
   formIdIdx: index("idx_submissions_form_id").on(table.formId),
