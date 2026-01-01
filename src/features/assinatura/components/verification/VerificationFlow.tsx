@@ -165,10 +165,16 @@ export const VerificationFlow = ({
       setVerificationResult(verificationResult);
       completeVerification(result.similarity, result.passed, verificationResult);
       
-      // Implement dynamic style injection for branding
+      // Implement dynamic style injection for branding with fallback
       const root = document.documentElement;
-      if (primaryColor) root.style.setProperty('--primary', primaryColor);
-      if (backgroundColor) root.style.setProperty('--background', backgroundColor);
+      const themeColor = primaryColor || '#2c3e50';
+      const bgThemeColor = backgroundColor || '#ffffff';
+      
+      root.style.setProperty('--primary', themeColor);
+      root.style.setProperty('--background', bgThemeColor);
+      
+      // Update sessionStorage for progress tracking
+      sessionStorage.setItem('verification_status', result.passed ? 'completed' : 'failed');
       
       goToStep('result');
       

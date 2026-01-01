@@ -64,6 +64,7 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem('verification_selfie');
     sessionStorage.removeItem('verification_document');
     sessionStorage.removeItem('verification_contract');
+    localStorage.removeItem('supabase.auth.token'); // Ensure Supabase session is cleared on reset
   };
 
   return (
