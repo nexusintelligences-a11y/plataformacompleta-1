@@ -5,8 +5,21 @@ import { eq } from "drizzle-orm";
 
 const router = Router();
 
+// Endpoint para registrar logs de auditoria detalhados
+router.post("/contracts/:id/audit", async (req, res) => {
+  const { action, metadata } = req.body;
+  const { id } = req.params;
+  
+  try {
+    // Implementar lógica de persistência de log de auditoria
+    console.log(`[AUDIT] Action: ${action} on Contract: ${id}`, metadata);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao registrar log de auditoria" });
+  }
+});
+
 // Proxy de Configuração: GET /api/config/supabase
-// Resolve conflitos entre variáveis de ambiente e entrega apenas o necessário para o cliente
 router.get("/config/supabase", (req, res) => {
   res.json({
     supabaseUrl: process.env.REACT_APP_SUPABASE_URL || process.env.VITE_SUPABASE_URL,

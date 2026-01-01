@@ -172,6 +172,8 @@ export const VerificationFlow = ({
       
       root.style.setProperty('--primary', themeColor);
       root.style.setProperty('--background', bgThemeColor);
+      root.style.setProperty('--verification-font-size', fontSize);
+      root.style.setProperty('--verification-font-family', fontFamily);
       
       // Update sessionStorage for progress tracking
       sessionStorage.setItem('verification_status', result.passed ? 'completed' : 'failed');

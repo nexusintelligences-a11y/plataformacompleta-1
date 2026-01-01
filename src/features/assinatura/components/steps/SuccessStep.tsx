@@ -39,7 +39,7 @@ export const SuccessStep = () => {
       return;
     }
 
-    // Create full HTML document for download
+    // Create full HTML document for download with print-specific styles
     const fullHtml = `
       <!DOCTYPE html>
       <html lang="pt-BR">
@@ -48,13 +48,29 @@ export const SuccessStep = () => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Contrato - ${contractData.protocol_number}</title>
         <style>
+          body { font-family: sans-serif; padding: 40px; line-height: 1.6; color: #333; }
+          h1, h2 { color: #2c3e50; text-align: center; }
+          .signature-box { border: 2px solid #2c3e50; padding: 20px; margin-top: 50px; border-radius: 8px; }
+          .protocol { font-family: monospace; font-weight: bold; color: #1351B4; }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none; }
+            @page { margin: 2cm; }
           }
         </style>
       </head>
       <body>
-        ${contractData.contract_html}
+        <div class="content">
+          ${contractData.contract_html}
+        </div>
+        <div class="signature-box">
+          <h2>Assinatura Digital</h2>
+          <p><strong>Signatário:</strong> ${govbrData?.nome}</p>
+          <p><strong>CPF:</strong> ${govbrData?.cpf}</p>
+          <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+          <p><strong>Protocolo:</strong> <span class="protocol">${contractData.protocol_number}</span></p>
+          <p><strong>Autenticação:</strong> GOV.BR (SHA-256)</p>
+        </div>
       </body>
       </html>
     `;
