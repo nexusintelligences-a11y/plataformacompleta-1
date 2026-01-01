@@ -1,48 +1,49 @@
 import { db } from "../db";
-import { signatureContracts, users, signatureLogs, auditTrail } from "../../shared/db-schema";
+import { contracts, users, signatureLogs, auditTrail } from "../../assinatura/shared/schema";
 import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { v4 as uuidv4 } from "uuid";
 
 export const storage = {
   async getAllContracts() {
-    return await db.select().from(signatureContracts);
+    return await db.select().from(contracts);
   },
 
   async getContract(id: string) {
-    const [contract] = await db.select().from(signatureContracts).where(eq(signatureContracts.id, id));
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, id));
     return contract || null;
   },
 
   async getContractByToken(token: string) {
-    const [contract] = await db.select().from(signatureContracts).where(eq(signatureContracts.access_token, token));
+    const [contract] = await db.select().from(contracts).where(eq(contracts.access_token, token));
     return contract || null;
   },
 
   async createContract(data: any) {
-    const id = nanoid();
-    const accessToken = nanoid(32);
-    const [contract] = await db.insert(signatureContracts).values({
+    const id = uuidv4();
+    const accessToken = uuidv4();
+    const [contract] = await db.insert(contracts).values({
       ...data,
       id,
       access_token: accessToken,
-      status: data.status || 'draft',
+      status: data.status || 'pending',
       created_at: new Date(),
-      updated_at: new Date(),
     }).returning();
     return contract;
   },
 
   async updateContract(id: string, data: any) {
-    const [contract] = await db.update(signatureContracts)
-      .set({ ...data, updated_at: new Date() })
-      .where(eq(signatureContracts.id, id))
+    const [contract] = await db.update(contracts)
+      .set({ ...data })
+      .where(eq(contracts.id, id))
       .returning();
     return contract || null;
   },
 
   async upsertUser(data: any) {
+    const id = uuidv4();
     const [user] = await db.insert(users).values({
       ...data,
+      id: data.id || id,
       created_at: new Date(),
     }).onConflictDoUpdate({
       target: users.cpf,
@@ -52,17 +53,22 @@ export const storage = {
   },
 
   async createSignatureLog(data: any) {
+    const id = uuidv4();
     const [log] = await db.insert(signatureLogs).values({
       ...data,
-      signed_at: new Date(),
+      id: data.id || id,
+      timestamp: data.timestamp || new Date(),
+      created_at: new Date(),
     }).returning();
     return log;
   },
 
   async createAuditTrail(data: any) {
+    const id = uuidv4();
     const [audit] = await db.insert(auditTrail).values({
       ...data,
-      created_at: new Date(),
+      id: data.id || id,
+      timestamp: new Date(),
     }).returning();
     return audit;
   }
