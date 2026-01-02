@@ -1,9 +1,122 @@
-import { pgTable, serial, varchar, text, timestamp, decimal, boolean, uuid, jsonb } from "drizzle-orm/pg-core";
-import { z } from "zod";
+import { pgTable, serial, varchar, text, timestamp, integer, json, boolean, date, uuid, jsonb, index, numeric, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { createInsertSchema } from 'drizzle-zod';
+import { z } from 'zod';
+
+// Notification Settings Table
+export const notificationSettings = pgTable('notification_settings', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  tenantId: text('tenant_id').notNull(),
+  email: text('email'),
+  phone: text('phone'),
+  emailEnabled: varchar('email_enabled', { length: 10 }).default('true'),
+  whatsappEnabled: varchar('whatsapp_enabled', { length: 10 }).default('false'),
+  enabled: varchar('enabled', { length: 10 }).default('true'),
+  sound: varchar('sound', { length: 10 }).default('true'),
+  vibration: varchar('vibration', { length: 10 }).default('true'),
+  badge: varchar('badge', { length: 10 }).default('true'),
+  showPreview: varchar('show_preview', { length: 10 }).default('true'),
+  quietHoursEnabled: varchar('quiet_hours_enabled', { length: 10 }).default('false'),
+  quietHoursStart: varchar('quiet_hours_start', { length: 10 }).default('22:00'),
+  quietHoursEnd: varchar('quiet_hours_end', { length: 10 }).default('08:00'),
+  supabaseEnabled: varchar('supabase_enabled', { length: 10 }).default('true'),
+  calendarEnabled: varchar('calendar_enabled', { length: 10 }).default('true'),
+  pluggyEnabled: varchar('pluggy_enabled', { length: 10 }).default('true'),
+  systemEnabled: varchar('system_enabled', { length: 10 }).default('true'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantIdx: index('idx_notification_settings_tenant').on(table.tenantId),
+  userIdx: uniqueIndex('idx_notification_settings_user_tenant').on(table.userId, table.tenantId),
+}));
+
+// Biometric Credentials Table
+export const biometricCredentials = pgTable('biometric_credentials', {
+  id: serial('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  userId: text('user_id').notNull(),
+  credentialId: text('credential_id').notNull(),
+  publicKey: text('public_key').notNull(),
+  counter: integer('counter').notNull().default(0),
+  transports: text('transports').array(),
+  deviceName: text('device_name'),
+  lastUsedAt: timestamp('last_used_at'),
+  createdAt: timestamp('created_at').defaultNow()
+}, (table) => ({
+  tenantIdx: index('idx_biometric_credentials_tenant').on(table.tenantId),
+}));
+
+// Pluggy Configuration Table
+export const pluggyConfig = pgTable('pluggy_config', {
+  id: serial('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  clientId: text('client_id').notNull(),
+  clientSecret: text('client_secret').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantUnique: uniqueIndex('idx_pluggy_tenant_unique').on(table.tenantId),
+}));
+
+// Pluggy Items Table
+export const pluggyItems = pgTable('pluggy_items', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  connectorId: varchar('connector_id', { length: 255 }),
+  connectorName: varchar('connector_name', { length: 255 }),
+  status: varchar('status', { length: 100 }),
+  executionStatus: varchar('execution_status', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantIdx: index('idx_pluggy_items_tenant').on(table.tenantId),
+}));
+
+// Supabase Configuration Table
+export const supabaseConfig = pgTable('supabase_config', {
+  id: serial('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  supabaseUrl: text('supabase_url').notNull(),
+  supabaseAnonKey: text('supabase_anon_key').notNull(),
+  supabaseBucket: text('supabase_bucket').default('receipts'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantUnique: uniqueIndex('idx_supabase_tenant_unique').on(table.tenantId),
+}));
+
+// BigDataCorp Configuration Table (CPF Consultation)
+export const bigdatacorpConfig = pgTable('bigdatacorp_config', {
+  id: serial('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  tokenId: text('token_id').notNull(),
+  chaveToken: text('chave_token').notNull(),
+  supabaseMasterUrl: text('supabase_master_url'),
+  supabaseMasterServiceRoleKey: text('supabase_master_service_role_key'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantUnique: uniqueIndex('idx_bigdatacorp_tenant_unique').on(table.tenantId),
+}));
+
+// Evolution API Configuration Table (WhatsApp)
+export const evolutionApiConfig = pgTable('evolution_api_config', {
+  id: serial('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  apiUrl: text('api_url').notNull(),
+  apiKey: text('api_key').notNull(),
+  instance: text('instance').default('nexus-whatsapp'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantUnique: uniqueIndex('idx_evolution_api_tenant_unique').on(table.tenantId),
+}));
 
 // ========================================
-// TABELA USERS
+// ASSINATURA DIGITAL TABLES
 // ========================================
+
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   cpf: varchar("cpf", { length: 14 }).notNull().unique(),
@@ -21,9 +134,6 @@ export const users = pgTable("users", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-// ========================================
-// TABELA CONTRACTS
-// ========================================
 export const contracts = pgTable("contracts", {
   id: serial("id").primaryKey(),
   access_token: uuid("access_token").defaultRandom().unique().notNull(),
@@ -41,7 +151,7 @@ export const contracts = pgTable("contracts", {
   signed_at: timestamp("signed_at"),
   verification_selfie: text("verification_selfie"),
   verification_document: text("verification_document"),
-  face_match_score: decimal("face_match_score", { precision: 5, scale: 2 }),
+  face_match_score: numeric("face_match_score", { precision: 5, scale: 2 }),
   logo_url: text("logo_url"),
   primary_color: varchar("primary_color", { length: 7 }).default("#3B82F6"),
   text_color: varchar("text_color", { length: 7 }).default("#1F2937"),
@@ -67,9 +177,6 @@ export const contracts = pgTable("contracts", {
   govbr_validated: boolean("govbr_validated").default(false),
 });
 
-// ========================================
-// TABELAS DE LOG E AUDITORIA
-// ========================================
 export const signatureLogs = pgTable("signature_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
   contract_id: integer("contract_id").references(() => contracts.id, { onDelete: "cascade" }),
@@ -91,8 +198,9 @@ export const auditTrail = pgTable("audit_trail", {
 });
 
 // ========================================
-// SCHEMAS ZOD
+// SCHEMAS ZOD PARA ASSINATURA
 // ========================================
+
 const optionalUrlOrEmpty = z.string().optional().or(z.literal("")).refine(
   (val) => !val || val === "" || z.string().url().safeParse(val).success,
   { message: "Deve ser uma URL válida ou vazio" }
