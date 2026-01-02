@@ -1,0 +1,468 @@
+# Guia de Migração: Schema Unificado
+
+## 🎯 O QUE FOI FEITO
+
+### ✅ Problema Resolvido
+- **ANTES**: Dois schemas concorrentes (`shared/db-schema.ts` + `assinatura/shared/schema.ts`)
+- **AGORA**: Um único schema unificado em `shared/db-schema.ts`
+
+### ✅ O que foi preservado
+- ✅ Todas as tabelas originais (notification_settings, biometric_credentials, etc)
+- ✅ Todas as exportações (supabaseConfig, pluggyConfig, etc)
+- ✅ Todos os índices e constraints
+- ✅ Todos os tipos TypeScript
+
+### ✅ O que foi integrado
+- ✅ Tabela `contracts` com todos os campos de personalização
+- ✅ Tabela `signatureUsers` (renomeada de `users` para evitar conflito)
+- ✅ Tabelas `signatureLogs` e `auditTrail`
+- ✅ Schemas Zod completos com validação de strings vazias
+- ✅ Helpers `optionalUrlOrEmpty` e `optionalColorOrEmpty`
+
+---
+
+## 📋 CHECKLIST DE APLICAÇÃO
+
+Execute os passos na ordem exata:
+
+### PASSO 1: Backup Crítico
+```bash
+# Faça backup do schema atual
+cp shared/db-schema.ts shared/db-schema.backup.ts
+
+# Faça backup do banco de dados (se possível)
+# pg_dump $DATABASE_URL > backup.sql
+```
+
+### PASSO 2: Substituir o Schema
+```bash
+# 1. Abra o arquivo shared/db-schema.ts
+# 2. SUBSTITUA TODO O CONTEÚDO pelo código do artifact anterior
+# 3. Salve o arquivo (Ctrl+S)
+```
+
+### PASSO 3: Atualizar Imports no Backend
+
+**Arquivo: `server/db/index.ts` (ou similar)**
+
+Verifique se o import está correto:
+
+```typescript
+// ✅ CORRETO
+import * as schema from "../../shared/db-schema";
+import { drizzle } from "drizzle-orm/node-postgres";
+import pkg from "pg";
+const { Pool } = pkg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+export const db = drizzle(pool, { schema });
+```
+
+**Arquivo: `server/storage/assinatura-storage.ts`**
+
+Atualize os imports:
+
+```typescript
+// ❌ ANTES (REMOVER)
+// import { db } from "../db";
+// import { contracts, insertContractSchema } from "../../assinatura/shared/schema";
+
+// ✅ DEPOIS (USAR)
+import { db } from "../db";
+import { 
+  contracts, 
+  insertContractSchema,
+  type InsertContract,
+  type Contract 
+} from "../../shared/db-schema";
+
+export async function createContract(data: InsertContract) {
+  try {
+    console.log("💾 Inserindo contrato no banco:", data);
+    
+    // Validação com Zod (já incluída no schema)
+    const validatedData = insertContractSchema.parse(data);
+    
+    // Inserção
+    const [newContract] = await db
+      .insert(contracts)
+      .values(validatedData)
+      .returning();
+    
+    console.log("✅ Contrato criado:", newContract.id);
+    return newContract;
+    
+  } catch (error: any) {
+    console.error("❌ Erro ao criar contrato:", error);
+    
+    if (error.name === "ZodError") {
+      console.error("🔴 Erros de validação:", error.errors);
+    }
+    
+    throw error;
+  }
+}
+
+// Outras funções...
+export async function getContractByAccessToken(accessToken: string) {
+  const [contract] = await db
+    .select()
+    .from(contracts)
+    .where(eq(contracts.access_token, accessToken))
+    .limit(1);
+  
+  return contract;
+}
+```
+
+**Arquivo: `server/routes.ts`**
+
+Atualize os imports:
+
+```typescript
+// ✅ CORRETO
+import { 
+  contracts, 
+  insertContractSchema,
+  signatureLogs,
+  auditTrail,
+  supabaseConfig,
+  pluggyConfig,
+  // Todos os outros exports...
+} from "../shared/db-schema";
+```
+
+### PASSO 4: Verificar drizzle.config.ts
+
+**Arquivo: `drizzle.config.ts`**
+
+```typescript
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  schema: "./shared/db-schema.ts", // ✅ ÚNICO schema
+  out: "./drizzle",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+});
+```
+
+### PASSO 5: Sincronizar o Banco de Dados
+
+```bash
+# Gera as migrações
+npm run db:generate
+
+# Aplica no banco (CUIDADO: vai alterar o banco)
+npm run db:push --force
+
+# Ou se preferir aplicar as migrações manualmente:
+npm run db:migrate
+```
+
+**⚠️ ATENÇÃO**: O `--force` pode sobrescrever dados. Use com cuidado!
+
+### PASSO 6: Remover Schema Antigo
+
+```bash
+# Após confirmar que tudo funciona:
+rm -rf assinatura/shared/schema.ts
+
+# Ou apenas renomeie para backup:
+mv assinatura/shared/schema.ts assinatura/shared/schema.old.ts
+```
+
+### PASSO 7: Atualizar Frontend (Admin.tsx)
+
+**Arquivo: `src/features/assinatura/pages/Admin.tsx`**
+
+O mapeamento continua o mesmo, apenas garanta que está enviando dados "flat":
+
+```typescript
+const handleCreateContract = async (formData: any) => {
+  // Mapeamento flat (já implementado anteriormente)
+  const flattenedData = {
+    client_name: formData.client_name || "",
+    client_cpf: (formData.client_cpf || "").replace(/\D/g, ""),
+    client_email: formData.client_email || "",
+    contract_html: formData.contract_html || "",
+    
+    // Personalização
+    logo_url: formData.appearance_configs?.logo_url || "",
+    primary_color: formData.appearance_configs?.primary_color || "",
+    text_color: formData.appearance_configs?.text_color || "",
+    font_family: formData.appearance_configs?.font_family || "",
+    company_name: formData.appearance_configs?.company_name || "",
+    footer_text: formData.appearance_configs?.footer_text || "",
+    
+    verification_instructions: formData.verification_configs?.instructions || "",
+    verification_security_message: formData.verification_configs?.security_message || "",
+    verification_icon_url: formData.verification_configs?.icon_url || "",
+    security_message: formData.verification_configs?.security_message || "",
+    header_background_color: formData.verification_configs?.header_background_color || "",
+    
+    progress_step1_text: formData.progress_tracker_configs?.step1_text || "",
+    progress_step2_text: formData.progress_tracker_configs?.step2_text || "",
+    progress_step3_text: formData.progress_tracker_configs?.step3_text || "",
+    progress_step4_text: formData.progress_tracker_configs?.step4_text || "",
+    
+    success_title: formData.reseller_welcome_configs?.title || "",
+    success_message: formData.reseller_welcome_configs?.message || "",
+    success_button_text: formData.reseller_welcome_configs?.button_text || "",
+    
+    app_store_url: formData.app_promotion_configs?.app_store_url || "",
+    play_store_url: formData.app_promotion_configs?.play_store_url || "",
+  };
+
+  console.log("📤 Enviando dados:", flattenedData);
+
+  const response = await fetch("/api/contracts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(flattenedData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error("❌ Erro:", errorData);
+    throw new Error(errorData.error);
+  }
+
+  const contract = await response.json();
+  console.log("✅ Contrato criado:", contract);
+};
+```
+
+### PASSO 8: Reiniciar o Servidor
+
+```bash
+# Pare o servidor (Ctrl+C)
+
+# Limpe o cache do Node
+rm -rf node_modules/.cache
+
+# Reinicie
+npm run dev
+```
+
+---
+
+## 🧪 TESTES DE VALIDAÇÃO
+
+### Teste 1: Verificar Exportações
+
+```typescript
+// Cole no console Node.js (node)
+const schema = require('./shared/db-schema');
+
+console.log("Exportações disponíveis:");
+console.log(Object.keys(schema));
+
+// Deve incluir:
+// - contracts
+// - signatureUsers
+// - signatureLogs
+// - auditTrail
+// - supabaseConfig
+// - pluggyConfig
+// - insertContractSchema
+// - etc...
+```
+
+### Teste 2: Verificar Banco de Dados
+
+```sql
+-- Cole no PostgreSQL
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public'
+ORDER BY table_name;
+
+-- Deve incluir:
+-- - contracts
+-- - signature_users (renomeada)
+-- - signature_logs
+-- - audit_trail
+-- - notification_settings
+-- - biometric_credentials
+-- - supabase_config
+-- - etc...
+```
+
+### Teste 3: Verificar Colunas da Tabela Contracts
+
+```sql
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'contracts'
+ORDER BY ordinal_position;
+
+-- Deve incluir TODOS os campos:
+-- - id, access_token
+-- - client_name, client_cpf, client_email
+-- - logo_url, primary_color, text_color
+-- - verification_instructions, verification_security_message, verification_icon_url
+-- - progress_step1_text, progress_step2_text, etc
+-- - success_title, success_message, success_button_text
+-- - app_store_url, play_store_url
+-- - govbr_token_hash, govbr_cpf, govbr_validated
+```
+
+### Teste 4: Criar Contrato de Teste
+
+```bash
+# Via cURL
+curl -X POST http://localhost:5000/api/contracts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Teste Unificado",
+    "client_cpf": "12345678901",
+    "client_email": "teste@unificado.com",
+    "contract_html": "<h1>Contrato Teste</h1>",
+    "logo_url": "",
+    "primary_color": "#FF5733",
+    "verification_instructions": "Tire uma selfie clara",
+    "app_store_url": ""
+  }'
+```
+
+**Resultado Esperado:**
+```json
+{
+  "id": 1,
+  "access_token": "uuid-aqui",
+  "client_name": "Teste Unificado",
+  "client_cpf": "12345678901",
+  "status": "pending",
+  "created_at": "2026-01-01T12:00:00Z"
+}
+```
+
+---
+
+## 🚨 TROUBLESHOOTING
+
+### Erro: "The requested module does not provide an export named 'supabaseConfig'"
+
+**Causa**: Imports ainda apontando para o schema antigo
+
+**Solução**:
+```bash
+# Busque todos os arquivos que importam do schema antigo
+grep -r "assinatura/shared/schema" server/
+
+# Substitua todos os imports para:
+# import { ... } from "../../shared/db-schema";
+```
+
+### Erro: "relation 'contracts' does not exist"
+
+**Causa**: Banco não foi sincronizado
+
+**Solução**:
+```bash
+npm run db:push --force
+```
+
+### Erro: "integer is not defined"
+
+**Causa**: Import incompleto no schema
+
+**Solução**: Verifique se o import tem TODOS os tipos:
+```typescript
+import { 
+  pgTable, serial, varchar, text, timestamp, 
+  integer, json, boolean, date, uuid, jsonb, 
+  index, numeric, uniqueIndex 
+} from 'drizzle-orm/pg-core';
+```
+
+### Erro: "ZodError: Invalid type"
+
+**Causa**: Frontend enviando string vazia mas schema não aceita
+
+**Solução**: Já resolvido no novo schema com `.or(z.literal(""))`
+
+### Erro: "Cannot find module '../../../shared/db-schema.js'"
+
+**Causa**: Path de import incorreto
+
+**Solução**: Ajuste o caminho relativo:
+```typescript
+// De server/storage/assinatura-storage.ts:
+import { ... } from "../../shared/db-schema";
+
+// De server/routes.ts:
+import { ... } from "../shared/db-schema";
+```
+
+---
+
+## ✅ CHECKLIST FINAL
+
+Antes de considerar a migração completa:
+
+- [ ] Schema unificado em `shared/db-schema.ts`
+- [ ] Todos os imports atualizados no backend
+- [ ] `drizzle.config.ts` apontando para o schema correto
+- [ ] Banco sincronizado (`npm run db:push --force`)
+- [ ] Servidor reiniciado
+- [ ] Teste de criação de contrato funcionando
+- [ ] Logs sem erros no terminal
+- [ ] Schema antigo removido ou renomeado
+- [ ] Frontend enviando dados flat corretamente
+- [ ] Todas as tabelas originais preservadas
+
+---
+
+## 📚 REFERÊNCIA RÁPIDA
+
+### Comandos Úteis
+
+```bash
+# Verificar schema
+npm run db:push --force
+
+# Gerar migrações
+npm run db:generate
+
+# Ver logs do Drizzle
+DEBUG=drizzle:* npm run dev
+
+# Verificar estrutura do banco
+psql $DATABASE_URL -c "\dt"
+psql $DATABASE_URL -c "\d contracts"
+```
+
+### Arquivos Modificados
+
+1. ✅ `shared/db-schema.ts` - Schema unificado
+2. ✅ `server/db/index.ts` - Import do schema
+3. ✅ `server/storage/assinatura-storage.ts` - Import atualizado
+4. ✅ `server/routes.ts` - Import atualizado
+5. ✅ `drizzle.config.ts` - Apontando para schema único
+6. ❌ `assinatura/shared/schema.ts` - REMOVER
+
+---
+
+## 🎉 SUCESSO!
+
+Se todos os testes passarem, a migração está completa.
+
+**Benefícios alcançados:**
+- ✅ Um único schema unificado
+- ✅ Todas as funcionalidades preservadas
+- ✅ Validação Zod corrigida
+- ✅ Estrutura flat/aninhada resolvida
+- ✅ Backend inicializando sem erros
+- ✅ Criação de contratos funcionando
+
+---
+
+**Última atualização**: Janeiro 2026
+**Versão**: 1.0 - Schema Unificado Completo
