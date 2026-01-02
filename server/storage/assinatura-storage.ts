@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { contracts, signatureLogs, auditTrail, users } from "../../assinatura/shared/schema";
-import { type InsertContract, type Contract, type InsertSignatureLog, type SignatureLog, type InsertAuditTrail, type AuditTrail } from "../../assinatura/shared/schema";
+import { contracts, signatureLogs, auditTrail, signatureUsers as users } from "../../shared/db-schema";
+import { type InsertContract, type Contract } from "../../shared/db-schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 

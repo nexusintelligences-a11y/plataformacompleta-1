@@ -192,6 +192,19 @@ export const bigdatacorpConfig = pgTable('bigdatacorp_config', {
   tenantUnique: uniqueIndex('idx_bigdatacorp_tenant_unique').on(table.tenantId),
 }));
 
+// Datacorp Checks Table
+export const datacorpChecks = pgTable('datacorp_checks', {
+  id: serial('id').primaryKey(),
+  tenantId: text('tenant_id').notNull(),
+  cpf: varchar('cpf', { length: 14 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(),
+  result: jsonb('result'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+}, (table) => ({
+  tenantCpfIdx: index('idx_datacorp_checks_tenant_cpf').on(table.tenantId, table.cpf),
+}));
+
 // Supabase Master Configuration Table (Centralized CPF Cache)
 export const supabaseMasterConfig = pgTable('supabase_master_config', {
   id: serial('id').primaryKey(),

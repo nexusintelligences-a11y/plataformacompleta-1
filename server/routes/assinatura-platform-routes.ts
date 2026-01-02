@@ -1,79 +1,36 @@
 import type { Express } from "express";
 import { storage } from "../storage/assinatura-storage";
-import { insertContractSchema, insertContractPartialSchema, insertSignatureLogSchema, insertUserSchema, insertAuditTrailSchema } from "../../assinatura/shared/schema";
+import { 
+  insertContractSchema, 
+  insertContractPartialSchema, 
+  contracts,
+  signatureLogs,
+  auditTrail,
+  signatureUsers
+} from "../../shared/db-schema";
 import { z } from "zod";
-import { getSupabaseClient } from "../lib/supabaseClient";
 
-/**
- * API ROUTES - EXPRESS SERVER
- * 
- * IMPORTANTE: O endpoint /api/config/supabase é crítico!
- * 
- * Por que existe:
- * - React/Vite não consegue acessar REACT_APP_* environment variables
- * - Vite só funciona com VITE_* prefixed variables
- * - Mas nossos secrets estão como REACT_APP_* (padrão Replit/CRA)
- * - Server (Node.js) TEM acesso a REACT_APP_* via process.env
- * - Solução: Fornecer credenciais via REST endpoint
- * 
- * Fluxo:
- * Client → GET /api/config/supabase → Server → fetch env vars → return JSON
- * 
- * ⚠️ SEGURANÇA:
- * - VITE_SUPABASE_PUBLISHABLE_KEY é pública (anon key)
- * - Não expor secrets (REACT_APP_SUPABASE_SECRET_KEY se existisse)
- * - Usar apenas anon key para reduzir security surface
- */
 export function registerRoutes(app: Express): void {
-  // ==================== CONFIG ENDPOINTS ====================
-  
-  /**
-   * GET /api/config/supabase
-   * Retorna credenciais Supabase públicas (anon key) ao cliente
-   * 
-   * Response:
-   * {
-   *   "url": "https://xxxxx.supabase.co",
-   *   "key": "eyJhbGc..." (anon key)
-   * }
-   * 
-   * Debug:
-   * curl http://localhost:5000/api/config/supabase
-   */
   app.get("/api/config/supabase", async (_req, res) => {
     try {
-      // 🔐 Prioridade: Banco de dados via getSupabaseClient (que já resolve multi-tenant/fallback)
       const supabase = await getSupabaseClient();
-      
       if (supabase) {
-        // @ts-ignore - Acessando propriedades privadas do cliente para retornar ao frontend
+        // @ts-ignore
         const supabaseUrl = supabase.supabaseUrl;
         // @ts-ignore
         const supabaseKey = supabase.supabaseKey;
-
         if (supabaseUrl && supabaseKey) {
-          return res.json({
-            url: supabaseUrl,
-            key: supabaseKey
-          });
+          return res.json({ url: supabaseUrl, key: supabaseKey });
         }
       }
-
-      // Fallback para env vars se o banco falhar
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
       const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-      
-      res.json({
-        url: supabaseUrl,
-        key: supabaseKey
-      });
+      res.json({ url: supabaseUrl, key: supabaseKey });
     } catch (error) {
       console.error("Erro ao carregar config Supabase para plataforma:", error);
       res.json({ url: '', key: '' });
     }
   });
-
-  // ==================== CONTRACT ENDPOINTS ====================
 
   app.get("/api/contracts", async (_req, res) => {
     try {
@@ -87,16 +44,11 @@ export function registerRoutes(app: Express): void {
 
   app.get("/api/contracts/by-id/:id", async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = parseInt(req.params.id);
       const contract = await storage.getContract(id);
-      
-      if (!contract) {
-        return res.status(404).json({ error: "Contract not found" });
-      }
-      
+      if (!contract) return res.status(404).json({ error: "Contract not found" });
       res.json(contract);
     } catch (error) {
-      console.error("Error fetching contract:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -105,140 +57,53 @@ export function registerRoutes(app: Express): void {
     try {
       const { token } = req.params;
       const contract = await storage.getContractByToken(token);
-      
-      if (!contract) {
-        return res.status(404).json({ error: "Contract not found" });
-      }
-      
+      if (!contract) return res.status(404).json({ error: "Contract not found" });
       res.json(contract);
     } catch (error) {
-      console.error("Error fetching contract:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
 
   app.post("/api/contracts", async (req, res) => {
-    console.log("=".repeat(80));
-    console.log("🔍 RECEBENDO REQUISIÇÃO DE CRIAÇÃO DE CONTRATO");
-    console.log("📥 Body recebido:", JSON.stringify(req.body, null, 2));
-    console.log("=".repeat(80));
-    
     try {
       const validatedData = insertContractSchema.parse(req.body);
-      console.log("✅ Dados validados com sucesso:", validatedData);
-      
       const contract = await storage.createContract(validatedData);
-      console.log("✅ Contrato criado no banco:", contract);
-      
       res.status(201).json(contract);
     } catch (error) {
-      console.error("=".repeat(80));
-      console.error("❌ ERRO AO CRIAR CONTRATO:");
-      
       if (error instanceof z.ZodError) {
-        console.error("🔴 Erros de Validação Zod:", JSON.stringify(error.errors, null, 2));
-        return res.status(400).json({ 
-          error: "Dados inválidos", 
-          details: error.errors 
-        });
+        return res.status(400).json({ error: "Dados inválidos", details: error.errors });
       }
-      
-      if (error instanceof Error) {
-        console.error("Tipo:", error.constructor.name);
-        console.error("Mensagem:", error.message);
-        console.error("Stack:", error.stack);
-      }
-      
-      console.error("=".repeat(80));
-      res.status(500).json({ 
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
+      res.status(500).json({ error: "Internal server error", message: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
   app.patch("/api/contracts/:id", async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = parseInt(req.params.id);
       const validatedData = insertContractPartialSchema.parse(req.body);
       const contract = await storage.updateContract(id, validatedData);
-      
-      if (!contract) {
-        return res.status(404).json({ error: "Contract not found" });
-      }
-      
+      if (!contract) return res.status(404).json({ error: "Contract not found" });
       res.json(contract);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error updating contract:", error);
+      if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
       res.status(500).json({ error: "Internal server error" });
     }
   });
 
   app.post("/api/contracts/:id/finalize", async (req, res) => {
     try {
-      const { id } = req.params;
+      const id = parseInt(req.params.id);
       const { selfie_photo, document_photo, signed_contract_html, status } = req.body;
-      
       const contract = await storage.updateContract(id, {
-        selfie_photo,
-        document_photo,
-        signed_contract_html,
+        verification_selfie: selfie_photo,
+        verification_document: document_photo,
+        contract_html: signed_contract_html,
         status: status || 'signed',
         signed_at: new Date(),
       });
-      
-      if (!contract) {
-        return res.status(404).json({ error: "Contract not found" });
-      }
-      
+      if (!contract) return res.status(404).json({ error: "Contract not found" });
       res.json(contract);
     } catch (error) {
-      console.error("Error finalizing contract:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.post("/api/users", async (req, res) => {
-    try {
-      const validatedData = insertUserSchema.parse(req.body);
-      const user = await storage.upsertUser(validatedData);
-      res.status(201).json(user);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error creating user:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.post("/api/signature-logs", async (req, res) => {
-    try {
-      const validatedData = insertSignatureLogSchema.parse(req.body);
-      const log = await storage.createSignatureLog(validatedData);
-      res.status(201).json(log);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error creating signature log:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.post("/api/audit-trail", async (req, res) => {
-    try {
-      const validatedData = insertAuditTrailSchema.parse(req.body);
-      const audit = await storage.createAuditTrail(validatedData);
-      res.status(201).json(audit);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Error creating audit trail:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
